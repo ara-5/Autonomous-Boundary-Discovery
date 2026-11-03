@@ -1,0 +1,8 @@
+# python run_missing.py 20   (20 seeds, 200-experiment cap; channel truth = ambient_sensor)
+random            correct 12/20, wrong channel 2; experiments: median 105, mean 117 (cap 200)
+targeted          correct 18/20, wrong channel 2; experiments: median 75, mean 76 (cap 200)
+random+confirm    correct 11/20, wrong channel 0; experiments: median 200, mean 168 (cap 200)
+targeted+confirm  correct 18/20, wrong channel 0; experiments: median 160, mean 152 (cap 200)
+# Fisher exact: targeted+confirm vs random+confirm correct 18/20 vs 11/20 -> p = 0.031
+# Fisher exact: targeted vs random correct 18/20 vs 12/20 -> p = 0.065
+# Fisher exact: wrong channel 0/20 (confirm) vs 2/20 (no confirm) -> p = 0.49 (not significant)
