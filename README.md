@@ -178,6 +178,10 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments
 
+## License
+
+Released under the [MIT License](LICENSE).
+
 ## Responsible use
 
 This is a **defensive, simulation-only** project. The "perturbations" are synthetic measurement shifts inside a sandbox, used to find where a detector's model is unreliable so it can be hardened. It contains no tooling for real systems and none should be added.
