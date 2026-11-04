@@ -41,7 +41,9 @@ class BlindAgent(Agent):
     def labels(self, X, y):
         impact = X[:, 1] > IMPACT
         ref = self.null.predict(X[:, :1])
-        if self.mode == "adaptive":
+        if self.mode == "absolute":
+            blind = impact & (y < 0.5)                       # learned detector says 'benign' on a real attack
+        elif self.mode == "adaptive":
             blind = impact & (y < adaptive_threshold(ref))   # detector would not raise an alarm
         else:
             blind = impact & ((y - ref) < DELTA)             # indistinguishable from no perturbation

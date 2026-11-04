@@ -43,12 +43,13 @@ def parse_blind(txt):
     return blocks
 
 
-def blind_chart():
-    blocks = parse_blind(read("blind_spot_results.txt"))
+def blind_chart(src="blind_spot_results.txt", out="results_blind_spot.png"):
+    blocks = parse_blind(read(src))
     names = {"uniform": "uniform fuzzing", "random": "random (safe radius)", "uncertainty": "uncertainty sampling",
              "discriminating": "model disagreement", "boundary": "boundary-targeting (ours)"}
     titles = {"delta": "Blind spot: indistinguishable from no perturbation",
-              "adaptive": "Blind spot: below load-adaptive alarm threshold"}
+              "adaptive": "Blind spot: below load-adaptive alarm threshold",
+              "ml_detector": "Learned detector says 'benign' on a real attack"}
     fig, axes = plt.subplots(1, len(blocks), figsize=(11.5, 4.3), sharey=True, constrained_layout=True)
     axes = [axes] if len(blocks) == 1 else axes
     for ax, (kind, rows) in zip(axes, blocks.items()):
@@ -62,13 +63,13 @@ def blind_chart():
         for t, k in zip(ax.get_yticklabels(), order):
             if k == "boundary":
                 t.set_fontweight("bold"); t.set_color(INK)
-        ax.set_xlim(0.6, 1.02); ax.xaxis.grid(True, color=GRID, lw=1); ax.set_axisbelow(True)
+        ax.set_xlim(0.55, 1.02); ax.xaxis.grid(True, color=GRID, lw=1); ax.set_axisbelow(True)
         ax.set_xlabel("balanced accuracy of the learned blind-spot rule (mean ± 95% CI, 20 seeds)")
         ax.set_title(titles[kind], loc="left", fontsize=11.5, color=INK)
     h1 = plt.Line2D([], [], color=BLUE, marker="o", ls="", label="loads the agent explored")
-    h2 = plt.Line2D([], [], color=ORANGE, marker="D", ls="", label="withheld high loads (transfer test)")
+    h2 = plt.Line2D([], [], color=ORANGE, marker="D", ls="", label="withheld high loads / contexts (transfer test)")
     axes[0].legend(handles=[h1, h2], loc="lower left", fontsize=8.5, facecolor=SURF, edgecolor=GRID)
-    fig.savefig(os.path.join(OUT, "results_blind_spot.png"), dpi=150)
+    fig.savefig(os.path.join(OUT, out), dpi=150)
     plt.close(fig)
 
 
@@ -116,6 +117,9 @@ if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     if os.path.exists(os.path.join(RES, "blind_spot_results.txt")):
         blind_chart(); terminal("terminal_blind_spot.png", "blind_spot_results.txt", "python run_blind.py 20", 46)
+    if os.path.exists(os.path.join(RES, "ml_detector_results.txt")):
+        blind_chart("ml_detector_results.txt", "results_ml_detector.png")
+        terminal("terminal_ml_detector.png", "ml_detector_results.txt", "python run_ml_detector.py 20", 24)
     missing_chart()
     terminal("terminal_missing_variable.png", "missing_variable_results.txt", "python run_missing.py 20", 10)
     print("results assets done")

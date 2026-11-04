@@ -28,3 +28,13 @@ def test_physics_consistent_perturbation_is_invisible():
     stealth = env.truth(np.array([[0.5, 1.0, 0.0]]))[0]
     loud = env.truth(np.array([[0.5, 1.0, 1.0]]))[0]
     assert abs(stealth - clean) < 1e-6 and loud > 10 * clean
+
+
+def test_learned_detector_has_training_gap():
+    """Strong visible attacks are caught inside the training region and missed far outside it."""
+    from abd.ml_detector_env import MLDetectorEnv
+
+    env = MLDetectorEnv()
+    inside = env.truth(np.array([[0.2, 1.0, 0.9]]))[0]
+    outside = env.truth(np.array([[1.0, 1.0, 0.9]]))[0]
+    assert inside > 0.9 and outside < 0.2

@@ -1,0 +1,31 @@
+# python run_ml_detector.py 20   (20 seeds, 60 experiments, contexts > 0.7 withheld; balanced accuracy mean ± 95% CI; the tree rule calls the context knob " load\)
+##### blind-spot type: ml_detector  (true share: seen contexts 0.35, withheld 0.98)
+uniform         TREE seen 0.784 ± 0.030 withheld 0.600 ± 0.080 | LOGIT seen 0.856 ± 0.018 withheld 0.692 ± 0.086
+random          TREE seen 0.753 ± 0.036 withheld 0.623 ± 0.054 | LOGIT seen 0.786 ± 0.038 withheld 0.653 ± 0.066
+uncertainty     TREE seen 0.817 ± 0.021 withheld 0.661 ± 0.056 | LOGIT seen 0.858 ± 0.016 withheld 0.718 ± 0.053
+discriminating  TREE seen 0.785 ± 0.026 withheld 0.696 ± 0.066 | LOGIT seen 0.791 ± 0.031 withheld 0.678 ± 0.053
+boundary        TREE seen 0.819 ± 0.019 withheld 0.745 ± 0.057 | LOGIT seen 0.864 ± 0.011 withheld 0.788 ± 0.050
+Example tree rule (boundary agent, seed 0):
+|--- non_stealth <= 0.59
+|   |--- non_stealth <= 0.33
+|   |   |--- class: True
+|   |--- non_stealth >  0.33
+|   |   |--- load <= 0.58
+|   |   |   |--- class: False
+|   |   |--- load >  0.58
+|   |   |   |--- class: True
+|--- non_stealth >  0.59
+|   |--- magnitude <= 0.59
+|   |   |--- load <= 0.39
+|   |   |   |--- class: False
+|   |   |--- load >  0.39
+|   |   |   |--- class: True
+|   |--- magnitude >  0.59
+|   |   |--- class: False
+
+
+##### shortcut test (paired intervention: strong visible attack, context 0.1-0.4 -> 0.85-1.0)
+mean change in detector score on attacks : -0.731  (Wilcoxon p = 1.6e-11, n=60)
+mean change in detector score on benign  : -0.115  (Wilcoxon p = 6e-11, n=60)
+
+[exited with code 0]

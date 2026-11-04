@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from abd.blindspot import DELTA, IMPACT, LOAD_CAP, BlindAgent, adaptive_threshold  # noqa: E402
 from abd.grid_ctx_env import CHANNELS, GridContextEnv  # noqa: E402
 from abd.grid_env import GridDetectorEnv  # noqa: E402
+from abd.ml_detector_env import TRAIN_CTX_MAX, TRAIN_VIS_MIN, MLDetectorEnv  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 os.makedirs(OUT, exist_ok=True)
@@ -66,6 +67,34 @@ def response_map():
                  bbox=dict(facecolor=SURF, edgecolor=GRID, boxstyle="round,pad=0.4"))
     fig.suptitle("Where the grid's bad-data detector goes blind", x=0.01, ha="left", fontsize=14, color=INK)
     fig.savefig(os.path.join(OUT, "detector_response_map.png"), dpi=150)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------- 1b. learned-detector map
+def ml_map():
+    env = MLDetectorEnv()
+    cx = np.linspace(0, 1, 140)
+    vy = np.linspace(0, 1, 140)
+    CX, VY = np.meshgrid(cx, vy)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4), sharey=True, constrained_layout=True)
+    for ax, inten in zip(axes, [0.5, 1.0]):
+        P = env.truth(np.c_[CX.ravel(), np.full(CX.size, inten), VY.ravel()]).reshape(CX.shape)
+        im = ax.imshow(P, origin="lower", extent=[0, 1, 0, 1], aspect="auto", vmin=0, vmax=1,
+                       cmap=plt.matplotlib.colors.LinearSegmentedColormap.from_list("s", SEQ))
+        ax.contour(CX, VY, P, levels=[0.5], colors=[ORANGE], linewidths=2.2)
+        ax.add_patch(plt.Rectangle((0, TRAIN_VIS_MIN), TRAIN_CTX_MAX, 1 - TRAIN_VIS_MIN, fill=False, ec=INK, lw=1.6, ls="--"))
+        ax.axvline(LOAD_CAP, color=MAGENTA, lw=1.6)
+        ax.set_title(f"Attack intensity {inten:.1f}", loc="left", fontsize=12, color=INK)
+        ax.set_xlabel("context (never part of an attack signature)")
+        ax.grid(False)
+    axes[0].set_ylabel("attack signature visibility")
+    axes[1].text(0.985, 0.04, "dashed box: the only conditions attacks appeared in during training\nmagenta line: edge of what the agent may explore\norange: detector's 50% decision boundary",
+                 ha="right", va="bottom", fontsize=8.2, color=INK2,
+                 bbox=dict(facecolor=SURF, edgecolor=GRID, boxstyle="round,pad=0.4"))
+    cb = fig.colorbar(im, ax=axes, shrink=0.85, pad=0.01)
+    cb.set_label("learned detector: P(attack)")
+    fig.suptitle("A learned detector's blind spot follows its training-data gap, not the attack", x=0.01, ha="left", fontsize=14, color=INK)
+    fig.savefig(os.path.join(OUT, "ml_detector_map.png"), dpi=150)
     plt.close(fig)
 
 
@@ -173,7 +202,8 @@ def missing_gif(seed=3, total=150):
 
 
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["map", "hunt", "missing"]
+    which = sys.argv[1:] or ["map", "mlmap", "hunt", "missing"]
     if "map" in which: response_map(); print("map done", flush=True)
+    if "mlmap" in which: ml_map(); print("mlmap done", flush=True)
     if "hunt" in which: hunt_gif(); print("hunt done", flush=True)
     if "missing" in which: missing_gif(); print("missing done", flush=True)

@@ -96,6 +96,32 @@ Left: random experiment conditions. Right: conditions chosen where the fitted mo
 <p align="center"><img src="assets/terminal_missing_variable.png" width="900" alt="Terminal output of run_missing.py"></p>
 </details>
 
+### 3. Contribution to AI security: auditing a *learned* detector
+
+The grid detector is hand-built maths. Most deployed detectors are **learned**, and they fail differently: their blind spots come from gaps in the training data and from shortcut features. This testbed applies the same engine to a gradient-boosted classifier trained on **synthetic** traffic-like feature vectors (no real malware, attack data or prompt text anywhere in the repo).
+
+In training, attacks were only ever recorded at low *context* (think network load or time of day) and with clearly visible signatures. Context never defines an attack, so any dependence on it is a shortcut.
+
+<p align="center"><img src="assets/ml_detector_map.png" width="880" alt="Heatmaps of the learned detector's attack probability with the training-coverage box and the agent's exploration limit"></p>
+
+The detector's blind spot follows its **training gap**, not the attack: a strong, fully visible attack is caught up to about 0.6 context and missed beyond about 0.7. The agent may only explore contexts up to 0.7; everything above is withheld (98% of it is a true blind spot, so that test is mostly "does the rule extrapolate to a region it never saw").
+
+<p align="center"><img src="assets/results_ml_detector.png" width="760" alt="Dot plot of learned blind-spot rule accuracy by strategy on explored and withheld contexts"></p>
+
+**Blind-spot map (20 seeds, logistic rule, withheld contexts):** boundary-targeting **0.788 ± 0.050**, uncertainty sampling 0.718 ± 0.053, uniform fuzzing 0.692 ± 0.086, model disagreement 0.678 ± 0.053, random 0.653 ± 0.066. Boundary-targeting is best, but this is a smaller and noisier win than on the grid: its interval overlaps uncertainty sampling, so treat it as suggestive. On the contexts the agent did explore, all methods are close (0.79 to 0.86).
+
+**Shortcut test (paired intervention):** hold a strong visible attack fixed and change *only* the context from low (0.1 to 0.4) to high (0.85 to 1.0). The detector's score on the attack drops by **0.73** (Wilcoxon p = 1.6e-11, n = 60), while its score on benign traffic moves by 0.12 (also significant, p = 6e-11, but about six times smaller). A detector that did not depend on context would show no change, so this flags context as a variable the model should not use.
+
+<details><summary>Raw output</summary>
+<p align="center"><img src="assets/terminal_ml_detector.png" width="900" alt="Terminal output of run_ml_detector.py"></p>
+</details>
+
+**Why this matters, and what it does not show**
+- It demonstrates the engine as an *audit tool for learned detectors*: it returns a readable map of where the detector fails and which non-causal variable it leans on, with evidence, using only black-box queries.
+- The training gap and the shortcut are planted by me. This shows the engine can find a known kind of flaw in a learned detector, not that it will find unknown flaws in a deployed one.
+- The tree rules in the saved output call the context knob `load` because the engine reuses the grid sandbox's input layout.
+- Next steps for credibility: real public intrusion-detection datasets, several model families, and comparison with robustness-testing tools.
+
 ### How the agent works
 
 | Step | Implementation |
@@ -130,6 +156,7 @@ python run_demo.py                  # stage 0: toy hidden-regime environment
 python run_grid.py                  # stage 1: grid detector, prediction error
 python run_blind.py 20              # stage 2: blind-spot map + withheld-load transfer (slow)
 python run_missing.py 20            # stage 3: missing-variable discovery
+python run_ml_detector.py 20        # stage 4: audit a learned (ML) detector + shortcut test
 python scripts/make_media.py        # regenerate the GIFs and heatmap (needs PYTHONPATH=.)
 python scripts/make_results.py      # regenerate the charts from results/*.txt
 ```
@@ -145,7 +172,8 @@ abd/
   grid_env.py       IEEE-14 grid + DC state estimator + bad-data detector
   grid_ctx_env.py   same, plus a hidden temperature driver and context channels
   blindspot.py      blind-spot agent, load withholding, adaptive-threshold labels
-run_demo.py  run_grid.py  run_blind.py  run_missing.py
+  ml_detector_env.py  learned (gradient-boosted) detector on synthetic traffic with a training gap
+run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py
 scripts/            make_media.py (GIFs, heatmap), make_results.py (charts)
 results/            saved outputs of the 20-seed runs
 tests/              smoke tests
@@ -174,7 +202,7 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 
 - Cheaper, sequential confirmation for the missing-variable step
 - Baselines from the closest prior art (safe level-set sampling, BO falsification)
-- Environments I did not design (larger grids, other domains, an ML detector)
+- Environments I did not design (larger grids, other domains, real public intrusion-detection datasets, several model families)
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments
 
