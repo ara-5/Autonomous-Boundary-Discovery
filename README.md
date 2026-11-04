@@ -22,7 +22,7 @@ The testbed is **defensive and cyber-physical**: a simulated IEEE 14-bus power g
 | Learned ML detector, synthetic gap (planted) | Best, but overlaps uncertainty sampling |
 | **Learned detector, real KDD Cup 99 data** | **Not better: uniform fuzzing wins** |
 
-The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far, and an ablation ruled out the safe-expansion radius as the cause.
+The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far, an ablation ruled out the safe-expansion radius as the cause, and a coverage-first hybrid did not beat it either.
 
 ---
 
@@ -154,8 +154,18 @@ The detector has a natural gap: recall is 0.00 on `guess_passwd`, `ftp_write`, `
 
 **The radius hypothesis is not supported.** Boundary-targeting does not improve without it (0.760 / 0.681), and on explored contexts all three stay well below uniform fuzzing (0.865). Only model disagreement gained a little on withheld contexts (0.727), which overlaps uniform's interval, so it is not a clear win either. On this dataset the loss belongs to the model-based strategies themselves.
 
+**Hybrid test (coverage first, then targeting).** If coverage is what matters, spending the first half of the budget on uniform sampling and the second half on boundary-targeting should recover the gap ([saved output](results/real_detector_hybrid_results.txt), same seeds):
+
+| Strategy (logistic rule) | Explored | Withheld |
+|---|---|---|
+| Uniform fuzzing | 0.865 ± 0.013 | 0.709 ± 0.033 |
+| **Hybrid** | 0.807 ± 0.021 | 0.702 ± 0.035 |
+| Boundary-targeting | 0.783 ± 0.017 | 0.686 ± 0.026 |
+
+The hybrid sits between the two on explored contexts, but its interval overlaps boundary-targeting's and is clearly below uniform's. On withheld contexts it matches uniform. So adding coverage helps a little but **does not close the gap**: on this dataset none of the targeted strategies I tried beats uniform fuzzing.
+
 Remaining explanations are untested hypotheses:
-- **Coverage may matter more than targeting at this budget.** Real blind spots here are clusters of rare families scattered through the feature space, and 60 experiments spread uniformly can reach more of them than 60 experiments concentrated where the model is uncertain.
+- **Coverage may still matter**, but not by itself: real blind spots here are clusters of rare families scattered through the feature space, and at 60 experiments even half a budget of targeting seems to cost more than it gains.
 - **The 3-feature rank projection is a coarse view** of what separates those families, so a boundary in that space is a weak target.
 - **Withheld contexts are hard for every method**: all strategies land between about 0.60 and 0.73.
 
@@ -250,7 +260,7 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 - Cheaper, sequential confirmation for the missing-variable step
 - Baselines from the closest prior art (safe level-set sampling, BO falsification)
 - A newer real dataset (CICIoT2023) and several model families, to see whether uniform fuzzing's advantage on real data is specific to KDD Cup 99
-- Test the coverage hypothesis: does a hybrid (uniform coverage first, then boundary-targeting) beat both?
+- Try larger experiment budgets and other feature projections on the real data (the hybrid with 60 experiments did not beat uniform)
 - Environments I did not design (larger grids, other domains)
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments

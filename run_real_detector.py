@@ -33,8 +33,11 @@ def trial(strategy, seed, budget=60, radius=0.2):
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
-    no_radius = "--no-radius" in sys.argv
-    strategies = ["uncertainty", "discriminating", "boundary"] if no_radius else ["uniform", "random", "uncertainty", "discriminating", "boundary"]
+    hybrid = "--hybrid" in sys.argv
+    no_radius = "--no-radius" in sys.argv or hybrid
+    strategies = ["hybrid"] if hybrid else (["uncertainty", "discriminating", "boundary"] if no_radius else ["uniform", "random", "uncertainty", "discriminating", "boundary"])
+    if hybrid:
+        print("##### HYBRID: first half of the budget uniform coverage, second half boundary-targeting (no radius)")
     if no_radius:
         print("##### ABLATION: no safe-expansion radius (candidates drawn uniformly over the allowed region)")
     rep = _e.detector_report()
@@ -49,7 +52,7 @@ if __name__ == "__main__":
         store[s] = np.array([r[5] for r in R])
         print(f"{s:15s} TREE seen {ci([r[0] for r in R])} withheld {ci([r[1] for r in R])} | "
               f"LOGIT seen {ci([r[2] for r in R])} withheld {ci([r[3] for r in R])}", flush=True)
-        if s == "boundary":
+        if s in ("boundary", "hybrid"):
             ex = R[0][4]
     print("\n##### share of REAL records the agent's rule flags as a blind spot (mean over seeds, logistic rule)")
     print(f"{'':16s}{'missed families':>16s}{'caught families':>17s}")
@@ -57,4 +60,4 @@ if __name__ == "__main__":
         flag = P.mean(0)                                   # per-record flag frequency across seeds
         print(f"{s:16s}{flag[POOL_MISS].mean():16.2f}{flag[~POOL_MISS].mean():17.2f}")
     print("(first column = fraction of truly-missed attack records flagged; second = false-flag rate on detected ones)")
-    print("\nExample tree rule (boundary agent, seed 0; axes: load=dst_bytes rank, magnitude=src_bytes rank, non_stealth=count rank):\n" + ex.rules())
+    print("\nExample tree rule (seed 0; axes: load=dst_bytes rank, magnitude=src_bytes rank, non_stealth=count rank):\n" + ex.rules())

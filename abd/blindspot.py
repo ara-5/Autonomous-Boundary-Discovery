@@ -53,26 +53,37 @@ class BlindAgent(Agent):
             blind = impact & ((y - ref) < DELTA)             # indistinguishable from no perturbation
         return impact, blind
 
+    HYBRID_FRAC = 0.5    # 'hybrid': uniform coverage for this share of the budget, then boundary-targeting
+
+    def explore(self, budget=60):
+        self._budget, self._t = budget, 0
+        for _ in range(budget):
+            self.step()
+            self._t += 1
+
     def step(self, n_cand=1500):
+        strat = self.strategy
+        if strat == "hybrid":
+            strat = "uniform" if self._t < self.HYBRID_FRAC * self._budget else "boundary"
         Xa, ya = self._arrays()
         C = self.rng.uniform(0, 1, (n_cand, 3))
         C[:, 0] *= LOAD_CAP                                   # high loads are withheld
-        if self.strategy != "uniform" and self.r is not None:   # r=None: no safe-expansion radius
+        if strat != "uniform" and self.r is not None:   # r=None: no safe-expansion radius
             d = np.min(np.linalg.norm(C[:, None] - Xa[None], axis=2), axis=1)
             C = C[d <= self.r]
-        if self.strategy in ("uniform", "random"):
+        if strat in ("uniform", "random"):
             self._observe(C[self.rng.integers(len(C))]); return
         committee = [m.fit(Xa, ya) for m in make_committee(self.seed)]
         score, _ = self.disagreement(C, committee)
-        if self.strategy in ("boundary", "uncertainty"):
+        if strat in ("boundary", "uncertainty"):
             impact, blind = self.labels(Xa, ya)
             if blind.sum() >= 2 and (impact & ~blind).sum() >= 2:
                 rf = RandomForestClassifier(100, min_samples_leaf=2, random_state=self.seed)
                 rf.fit(Xa[impact], blind[impact])
                 unc = 1 - np.abs(2 * rf.predict_proba(C)[:, 1] - 1)
                 unc = np.where(self._impact(C), unc, 0)       # only boundary inside impact zone
-                score = unc if self.strategy == "uncertainty" else score / (score.max() + 1e-9) + unc
-            elif self.strategy == "uncertainty":
+                score = unc if strat == "uncertainty" else score / (score.max() + 1e-9) + unc
+            elif strat == "uncertainty":
                 score = self.rng.random(len(C))
         self._observe(C[np.argmax(score)])
 
