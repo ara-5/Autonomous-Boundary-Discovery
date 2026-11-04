@@ -8,7 +8,7 @@ Given a detector you can only query, where does it fail, which variable does it 
 - **An audit pipeline** that returns a readable blind-spot rule, runs a paired-intervention shortcut test, and identifies a missing driver.
 - **A reference method** (boundary-targeting experiment design) plus baselines, so any new strategy can be compared fairly. On the real dataset, simple space-filling baselines currently win (see the scorecard).
 
-The testbed is **defensive and simulation-only**.
+The testbed is **defensive and simulation-only**. A short write-up with the full scorecard and limitations is in the [technical report](docs/REPORT.md).
 
 <p align="center">
   <img src="assets/blind_spot_hunt.gif" width="560" alt="Animation: the agent runs experiments and its learned blind-spot rule converges on the true blind region">
