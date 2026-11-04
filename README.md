@@ -198,6 +198,16 @@ The detector has a natural gap: recall is 0.00 on `guess_passwd`, `ftp_write`, `
 
 The hybrid sits between the two on explored contexts, but its interval overlaps boundary-targeting's and is clearly below uniform's. On withheld contexts it matches uniform. So adding coverage helps a little but **does not close the gap**: on this dataset none of the targeted strategies I tried beats uniform fuzzing.
 
+**Larger budget (200 experiments instead of 60).** Maybe targeting only pays off once there is more data to learn from ([saved output](results/real_detector_budget200_results.txt), no radius, same seeds):
+
+| Strategy (logistic rule) | Explored | Withheld |
+|---|---|---|
+| Uniform fuzzing | 0.868 ± 0.008 | 0.728 ± 0.031 |
+| Hybrid | 0.810 ± 0.007 | 0.695 ± 0.014 |
+| Boundary-targeting | 0.772 ± 0.009 | 0.718 ± 0.030 |
+
+It does not. Boundary-targeting at 200 experiments (0.772) is no better than at 60 (0.783), and uniform fuzzing is still clearly ahead on explored contexts. On withheld contexts the three are within each other's intervals. So more budget does not change the real-data verdict.
+
 Remaining explanations are untested hypotheses:
 - **Coverage may still matter**, but not by itself: real blind spots here are clusters of rare families scattered through the feature space, and at 60 experiments even half a budget of targeting seems to cost more than it gains.
 - **The 3-feature rank projection is a coarse view** of what separates those families, so a boundary in that space is a weak target.
@@ -296,7 +306,7 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 - Cheaper, sequential confirmation for the missing-variable step
 - Baselines from the closest prior art (safe level-set sampling, BO falsification)
 - A newer real dataset (CICIoT2023) and several model families, to see whether uniform fuzzing's advantage on real data is specific to KDD Cup 99
-- Try larger experiment budgets and other feature projections on the real data (the hybrid with 60 experiments did not beat uniform)
+- Other feature projections of the real data (neither a hybrid nor a larger budget helped boundary-targeting)
 - Environments I did not design (larger grids, other domains)
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments

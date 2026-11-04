@@ -1,0 +1,37 @@
+# python run_real_detector.py 20 --budget 200   (200 experiments per run instead of 60, no safe radius; same seeds and data)
+##### BUDGET ABLATION: 200 experiments per run (no safe radius)
+##### ABLATION: no safe-expansion radius (candidates drawn uniformly over the allowed region)
+##### ground truth: detector recall by attack family (probe pool, never shown to the agent)
+held-out families (not in training): warezclient, guess_passwd, buffer_overflow, warezmaster, imap, rootkit, loadmodule, ftp_write, multihop, phf, perl, spy
+lowest recall : guess_passwd 0.00, ftp_write 0.00, loadmodule 0.00, multihop 0.00, phf 0.00, rootkit 0.00, perl 0.00, spy 0.00
+pool of real attack records: 6450, missed by the detector: 18.2%
+
+##### blind-spot type: real_kdd  (true share: seen contexts 0.15, withheld 0.38)
+uniform         TREE seen 0.889 ± 0.015 withheld 0.659 ± 0.057 | LOGIT seen 0.868 ± 0.008 withheld 0.728 ± 0.031
+boundary        TREE seen 0.815 ± 0.018 withheld 0.658 ± 0.022 | LOGIT seen 0.772 ± 0.009 withheld 0.718 ± 0.030
+hybrid          TREE seen 0.888 ± 0.008 withheld 0.671 ± 0.044 | LOGIT seen 0.810 ± 0.007 withheld 0.695 ± 0.014
+
+##### share of REAL records the agent's rule flags as a blind spot (mean over seeds, logistic rule)
+                 missed families  caught families
+uniform                     0.93             0.21
+boundary                    0.64             0.12
+hybrid                      0.71             0.17
+(first column = fraction of truly-missed attack records flagged; second = false-flag rate on detected ones)
+
+Example tree rule (seed 0; axes: load=dst_bytes rank, magnitude=src_bytes rank, non_stealth=count rank):
+|--- non_stealth <= 0.36
+|   |--- magnitude <= 0.43
+|   |   |--- class: False
+|   |--- magnitude >  0.43
+|   |   |--- magnitude <= 0.75
+|   |   |   |--- class: True
+|   |   |--- magnitude >  0.75
+|   |   |   |--- class: True
+|--- non_stealth >  0.36
+|   |--- load <= 0.62
+|   |   |--- class: False
+|   |--- load >  0.62
+|   |   |--- load <= 0.65
+|   |   |   |--- class: True
+|   |   |--- load >  0.65
+|   |   |   |--- class: False
