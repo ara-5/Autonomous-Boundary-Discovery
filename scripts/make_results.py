@@ -79,11 +79,12 @@ def blind_chart(src="blind_spot_results.txt", out="results_blind_spot.png"):
 # ------------------------------------------------------------- missing-variable chart
 def missing_chart():
     rows = []
-    for line in read("missing_variable_results.txt").splitlines():
+    extra = read("missing_variable_maximin_results.txt") if os.path.exists(os.path.join(RES, "missing_variable_maximin_results.txt")) else ""
+    for line in (read("missing_variable_results.txt") + "\n" + extra).splitlines():
         m = re.match(r"(\S+)\s+correct (\d+)/(\d+), wrong channel (\d+); experiments: median (\d+)", line)
         if m:
             rows.append((m.group(1), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5))))
-    fig, axes = plt.subplots(1, 2, figsize=(11, 3.6), constrained_layout=True)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4), constrained_layout=True)
     labels = [r[0] for r in rows][::-1]
     ys = range(len(rows))
     cols = [ORANGE if "targeted" in r[0] else BLUE for r in rows][::-1]
@@ -97,7 +98,7 @@ def missing_chart():
     axes[1].set_xlim(0, 235); axes[1].set_title("Experiments needed (median, cap 200)", loc="left", fontsize=11.5)
     for ax in axes:
         ax.set_yticks(list(ys)); ax.set_yticklabels(labels); ax.xaxis.grid(True, color=GRID, lw=1); ax.set_axisbelow(True)
-    axes[0].text(0, -1.05, "orange = targeted experiment design, blue = random", fontsize=8.5, color=INK2,
+    axes[0].text(0, -1.05, "orange = targeted design, blue = baselines (random, space-filling maximin)", fontsize=8.5, color=INK2,
                  transform=axes[0].get_yaxis_transform())
     fig.savefig(os.path.join(OUT, "results_missing_variable.png"), dpi=150)
     plt.close(fig)

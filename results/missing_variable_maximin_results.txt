@@ -1,0 +1,7 @@
+# python run_missing.py 20 --maximin   (space-filling design baseline; same seeds/cap as missing_variable_results.txt)
+maximin           correct 9/20, wrong channel 1; experiments: median 180, mean 132 (cap 200)
+maximin+confirm   correct 8/20, wrong channel 0; experiments: median 200, mean 186 (cap 200)
+
+[exited with code 0]
+# Fisher exact: targeted+confirm 18/20 vs maximin+confirm 8/20 -> p = 0.0022
+# Fisher exact: targeted 18/20 vs maximin 9/20 -> p = 0.0057

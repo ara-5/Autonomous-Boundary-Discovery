@@ -70,6 +70,13 @@ def trial(strategy, seed, confirm=False):
             continue                                   # rejected: keep exploring
         if strategy == "random":
             nxt = rng.uniform(0, 1, (BATCH, 3))
+        elif strategy == "maximin":                      # space-filling design: farthest from everything so far
+            cand = rng.uniform(0, 1, (800, 3))
+            chosen, pts = [], np.array(X)
+            for _ in range(BATCH):
+                d = np.min(np.linalg.norm(cand[:, None] - pts[None], axis=2), axis=1)
+                k = int(np.argmax(d)); chosen.append(cand[k]); pts = np.vstack([pts, cand[k]])
+            nxt = np.array(chosen)
         else:
             cand = rng.uniform(0, 1, (800, 3))
             m, _ = interaction_model(np.array(X), np.array(C), np.array(y))
@@ -84,7 +91,8 @@ def trial(strategy, seed, confirm=False):
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
-    for strat, conf in [("random", False), ("targeted", False), ("random", True), ("targeted", True)]:
+    runs = [("maximin", False), ("maximin", True)] if "--maximin" in sys.argv else [("random", False), ("targeted", False), ("random", True), ("targeted", True)]
+    for strat, conf in runs:
         R = [trial(strat, i, conf) for i in range(n)]
         cost = np.array([r[0] for r in R])
         ok = np.array([r[2] and r[1] == "ambient_sensor" for r in R])

@@ -28,9 +28,9 @@ Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my refe
 | `ml_synthetic` (planted gap) | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 | **No advantage** (maximin is as good) |
 | **`kdd_real`** (real data) | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius); 0.845 ± 0.014 / 0.681 ± 0.026 (same 0.2 radius as boundary) | **Worse**: uniform and maximin both beat it |
 
-Missing-variable discovery (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation); no space-filling baseline has been run for that task yet.
+**Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This is the most robust result in the repo, though the driver is one I planted.
 
-**Honest summary:** boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
+**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The one place targeted design wins clearly against every baseline is **missing-variable discovery**. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
 
 ### Use the benchmark
 
@@ -130,8 +130,10 @@ Left: random experiment conditions. Right: conditions chosen where the fitted mo
 | targeted | 18 / 20 | 2 | **75** |
 | random + confirm | 11 / 20 | 0 | 200 (cap) |
 | **targeted + confirm** | **18 / 20** | **0** | 160 |
+| maximin (space-filling) | 9 / 20 | 1 | 180 |
+| maximin + confirm | 8 / 20 | 0 | 200 (cap) |
 
-- Targeted vs random (with confirmation): **18/20 vs 11/20, Fisher exact p = 0.031.** Without confirmation the gap is 18/20 vs 12/20, p = 0.065, borderline.
+- Targeted vs random (with confirmation): **18/20 vs 11/20, Fisher exact p = 0.031.** Against the stronger space-filling (maximin) baseline the gap is larger: **18/20 vs 8/20, p = 0.002** ([saved output](results/missing_variable_maximin_results.txt)). Without confirmation the gap is 18/20 vs 12/20, p = 0.065, borderline.
 - The **confirmation step** (30 fresh high-load experiments, test only the flagged channel, out of sample) removed both false identifications, but 0 vs 2 out of 20 is not statistically significant (p = 0.49), and it roughly doubles the cost.
 - The hidden driver is one I planted, so this shows the method works on a planted missing variable. It does not show it can find an unknown one.
 
