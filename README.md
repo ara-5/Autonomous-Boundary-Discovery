@@ -22,7 +22,7 @@ The testbed is **defensive and cyber-physical**: a simulated IEEE 14-bus power g
 | Learned ML detector, synthetic gap (planted) | Best, but overlaps uncertainty sampling |
 | **Learned detector, real KDD Cup 99 data** | **Not better: uniform fuzzing wins** |
 
-The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far.
+The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far, and an ablation ruled out the safe-expansion radius as the cause.
 
 ---
 
@@ -143,10 +143,21 @@ The detector has a natural gap: recall is 0.00 on `guess_passwd`, `ftp_write`, `
 
 **Result: on real data, boundary-targeting does not win.** With the logistic rule, plain **uniform fuzzing is best** (0.865 ± 0.013 explored, 0.709 ± 0.033 withheld). Boundary-targeting scores 0.783 ± 0.017 and 0.686 ± 0.026; the two intervals do not overlap on the explored contexts, and overlap on the withheld ones. Random exploration with the safe-expansion radius (0.865 / 0.655) is also at or above the three model-based strategies on explored contexts.
 
-What I think this means (hypotheses, not tested here):
-- **The safe-expansion radius probably costs accuracy.** Uniform fuzzing is the only strategy that ignores it. On an offline dataset the constraint protects nothing, so it only slows reaching distant clusters. A fair test needs a setting where unsafe queries really are costly.
-- **Real blind spots are fragmented.** They are clusters of rare families, not smooth regions, and a 3-feature rank projection is a coarse view of them.
-- **Withheld contexts are hard for every method**, and every strategy lands between about 0.60 and 0.71.
+**Ablation: is the safe-expansion radius to blame?** I suspected so, because uniform fuzzing is the only strategy that ignores it, and on an offline dataset the radius protects nothing. So I re-ran the three model-based strategies with no radius (same data, same 20 seeds; [saved output](results/real_detector_noradius_results.txt)):
+
+| Strategy (logistic rule) | Explored, with radius | Explored, no radius | Withheld, with radius | Withheld, no radius |
+|---|---|---|---|---|
+| Boundary-targeting | 0.783 ± 0.017 | 0.760 ± 0.030 | 0.686 ± 0.026 | 0.681 ± 0.040 |
+| Model disagreement | 0.783 ± 0.027 | 0.770 ± 0.031 | 0.685 ± 0.033 | 0.727 ± 0.040 |
+| Uncertainty sampling | 0.789 ± 0.032 | 0.765 ± 0.018 | 0.604 ± 0.055 | 0.647 ± 0.052 |
+| *Uniform fuzzing (reference)* | *0.865 ± 0.013* | | *0.709 ± 0.033* | |
+
+**The radius hypothesis is not supported.** Boundary-targeting does not improve without it (0.760 / 0.681), and on explored contexts all three stay well below uniform fuzzing (0.865). Only model disagreement gained a little on withheld contexts (0.727), which overlaps uniform's interval, so it is not a clear win either. On this dataset the loss belongs to the model-based strategies themselves.
+
+Remaining explanations are untested hypotheses:
+- **Coverage may matter more than targeting at this budget.** Real blind spots here are clusters of rare families scattered through the feature space, and 60 experiments spread uniformly can reach more of them than 60 experiments concentrated where the model is uncertain.
+- **The 3-feature rank projection is a coarse view** of what separates those families, so a boundary in that space is a weak target.
+- **Withheld contexts are hard for every method**: all strategies land between about 0.60 and 0.73.
 
 On the agent's rule over the real records, uniform flags 89% of the truly missed records (and 18% of the detected ones); boundary-targeting flags 68% (and 16%). So on this dataset the model-based strategies are more conservative, not more accurate.
 
@@ -238,7 +249,8 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 
 - Cheaper, sequential confirmation for the missing-variable step
 - Baselines from the closest prior art (safe level-set sampling, BO falsification)
-- A newer real dataset (CICIoT2023) and several model families; test whether the safe-expansion radius is what hurts on offline data
+- A newer real dataset (CICIoT2023) and several model families, to see whether uniform fuzzing's advantage on real data is specific to KDD Cup 99
+- Test the coverage hypothesis: does a hybrid (uniform coverage first, then boundary-targeting) beat both?
 - Environments I did not design (larger grids, other domains)
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments

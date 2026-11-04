@@ -57,7 +57,7 @@ class BlindAgent(Agent):
         Xa, ya = self._arrays()
         C = self.rng.uniform(0, 1, (n_cand, 3))
         C[:, 0] *= LOAD_CAP                                   # high loads are withheld
-        if self.strategy != "uniform":
+        if self.strategy != "uniform" and self.r is not None:   # r=None: no safe-expansion radius
             d = np.min(np.linalg.norm(C[:, None] - Xa[None], axis=2), axis=1)
             C = C[d <= self.r]
         if self.strategy in ("uniform", "random"):

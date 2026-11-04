@@ -18,9 +18,9 @@ POOL_MISS = _e.p < 0.5
 FAM = _e.pool["labels"].values
 
 
-def trial(strategy, seed, budget=60):
+def trial(strategy, seed, budget=60, radius=0.2):
     env = RealDetectorEnv(noise_seed=seed)
-    a = BlindAgent(env, strategy, step_radius=0.2, seed=seed, label_mode="real")
+    a = BlindAgent(env, strategy, step_radius=radius, seed=seed, label_mode="real")
     a.bootstrap(n=25, hi=0.6)
     a.calibrate_null()
     a.explore(budget)
@@ -33,6 +33,10 @@ def trial(strategy, seed, budget=60):
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
+    no_radius = "--no-radius" in sys.argv
+    strategies = ["uncertainty", "discriminating", "boundary"] if no_radius else ["uniform", "random", "uncertainty", "discriminating", "boundary"]
+    if no_radius:
+        print("##### ABLATION: no safe-expansion radius (candidates drawn uniformly over the allowed region)")
     rep = _e.detector_report()
     print("##### ground truth: detector recall by attack family (probe pool, never shown to the agent)")
     print("held-out families (not in training): " + ", ".join(UNSEEN))
@@ -40,8 +44,8 @@ if __name__ == "__main__":
     print(f"pool of real attack records: {len(_e.pool)}, missed by the detector: {POOL_MISS.mean():.1%}")
     print(f"\n##### blind-spot type: real_kdd  (true share: seen contexts {TRUE[SEEN].mean():.2f}, withheld {TRUE[~SEEN].mean():.2f})")
     store, ex = {}, None
-    for s in ["uniform", "random", "uncertainty", "discriminating", "boundary"]:
-        R = [trial(s, i) for i in range(n)]
+    for s in strategies:
+        R = [trial(s, i, radius=None if no_radius else 0.2) for i in range(n)]
         store[s] = np.array([r[5] for r in R])
         print(f"{s:15s} TREE seen {ci([r[0] for r in R])} withheld {ci([r[1] for r in R])} | "
               f"LOGIT seen {ci([r[2] for r in R])} withheld {ci([r[3] for r in R])}", flush=True)
