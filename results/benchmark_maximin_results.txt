@@ -1,0 +1,16 @@
+# Maximin (space-filling) baseline, 20 seeds, 60 experiments, balanced accuracy mean ± 95% CI
+# commands: python -m abd.benchmark --task {grid_delta,grid_adaptive,ml_synthetic} --strategies maximin --seeds 20 --radius 0.2
+#           python -m abd.benchmark --task kdd_real --strategies maximin --seeds 20 --radius none     (first kdd_real block)
+#           python -m abd.benchmark --task kdd_real --strategies maximin --seeds 20 --radius 0.2      (second kdd_real block)
+##### blind-spot type: grid_delta  (true share: seen contexts 0.04, withheld 0.04)   [IEEE-14 grid detector; blind = indistinguishable from no perturbation]
+maximin         TREE seen 0.938 ± 0.027 withheld 0.971 ± 0.034 | LOGIT seen 0.964 ± 0.012 withheld 0.927 ± 0.041
+##### blind-spot type: grid_adaptive  (true share: seen contexts 0.04, withheld 0.07)   [IEEE-14 grid detector; blind = below the load-adaptive alarm threshold]
+maximin         TREE seen 0.912 ± 0.032 withheld 0.812 ± 0.051 | LOGIT seen 0.949 ± 0.025 withheld 0.895 ± 0.055
+##### blind-spot type: ml_synthetic  (true share: seen contexts 0.35, withheld 0.98)   [learned detector on synthetic traffic with a planted training gap]
+maximin         TREE seen 0.793 ± 0.023 withheld 0.603 ± 0.082 | LOGIT seen 0.872 ± 0.010 withheld 0.807 ± 0.075
+##### blind-spot type: kdd_real  (true share: seen contexts 0.15, withheld 0.38)   [learned detector on real KDD Cup 99 records (held-out attack families)]
+maximin         TREE seen 0.879 ± 0.018 withheld 0.721 ± 0.048 | LOGIT seen 0.854 ± 0.009 withheld 0.774 ± 0.023
+##### blind-spot type: kdd_real  (true share: seen contexts 0.15, withheld 0.38)   [learned detector on real KDD Cup 99 records (held-out attack families)]
+maximin         TREE seen 0.870 ± 0.018 withheld 0.640 ± 0.044 | LOGIT seen 0.845 ± 0.014 withheld 0.681 ± 0.026
+
+[exited with code 0]

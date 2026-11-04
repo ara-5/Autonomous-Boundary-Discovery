@@ -33,9 +33,13 @@ def trial(strategy, seed, budget=60, radius=0.2):
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 20
+    budget = int(sys.argv[sys.argv.index("--budget") + 1]) if "--budget" in sys.argv else 60
     hybrid = "--hybrid" in sys.argv
-    no_radius = "--no-radius" in sys.argv or hybrid
+    no_radius = "--no-radius" in sys.argv or hybrid or budget != 60
     strategies = ["hybrid"] if hybrid else (["uncertainty", "discriminating", "boundary"] if no_radius else ["uniform", "random", "uncertainty", "discriminating", "boundary"])
+    if budget != 60:
+        strategies = ["uniform", "boundary", "hybrid"]
+        print(f"##### BUDGET ABLATION: {budget} experiments per run (no safe radius)")
     if hybrid:
         print("##### HYBRID: first half of the budget uniform coverage, second half boundary-targeting (no radius)")
     if no_radius:
@@ -48,7 +52,7 @@ if __name__ == "__main__":
     print(f"\n##### blind-spot type: real_kdd  (true share: seen contexts {TRUE[SEEN].mean():.2f}, withheld {TRUE[~SEEN].mean():.2f})")
     store, ex = {}, None
     for s in strategies:
-        R = [trial(s, i, radius=None if no_radius else 0.2) for i in range(n)]
+        R = [trial(s, i, budget=budget, radius=None if no_radius else 0.2) for i in range(n)]
         store[s] = np.array([r[5] for r in R])
         print(f"{s:15s} TREE seen {ci([r[0] for r in R])} withheld {ci([r[1] for r in R])} | "
               f"LOGIT seen {ci([r[2] for r in R])} withheld {ci([r[3] for r in R])}", flush=True)

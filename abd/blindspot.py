@@ -19,6 +19,25 @@ IMPACT, DELTA, LOAD_CAP = 0.4, 3.0, 0.7
 FLAG_MIN, FLAG_MULT = 6.2, 1.5   # adaptive mode: operators raise the alarm threshold with load
 
 
+# Plug-in strategies: name -> fn(X, y, candidates, rng, labels) -> index into candidates.
+#   X, y        : experiments so far (inputs in [0,1]^3, detector outputs)
+#   candidates  : (n, 3) array of allowed next experiments (safety radius already applied)
+#   labels(X,y) : returns (impact_mask, blind_mask) using the task's blind-spot definition
+CUSTOM_STRATEGIES = {}
+
+
+def register_strategy(name, fn):
+    CUSTOM_STRATEGIES[name] = fn
+
+
+def _maximin(X, y, C, rng, labels):
+    """Space-filling baseline: pick the candidate farthest from everything tried so far."""
+    return int(np.argmax(np.min(np.linalg.norm(C[:, None] - X[None], axis=2), axis=1)))
+
+
+register_strategy("maximin", _maximin)
+
+
 def adaptive_threshold(null_score):
     return np.maximum(FLAG_MIN, FLAG_MULT * null_score)
 
@@ -71,6 +90,8 @@ class BlindAgent(Agent):
         if strat != "uniform" and self.r is not None:   # r=None: no safe-expansion radius
             d = np.min(np.linalg.norm(C[:, None] - Xa[None], axis=2), axis=1)
             C = C[d <= self.r]
+        if strat in CUSTOM_STRATEGIES:
+            self._observe(C[CUSTOM_STRATEGIES[strat](Xa, ya, C, self.rng, self.labels)]); return
         if strat in ("uniform", "random"):
             self._observe(C[self.rng.integers(len(C))]); return
         committee = [m.fit(Xa, ya) for m in make_committee(self.seed)]

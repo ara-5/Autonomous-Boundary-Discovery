@@ -1,28 +1,60 @@
 # Autonomous Boundary Discovery
 
-**An agent that discovers where its own understanding of a system stops being true.**
+**A benchmark and audit toolkit for finding where a detector goes blind, using only black-box experiments.**
 
-Most failure-finding tools search the inputs a model already has. This project asks a harder question: *given a system whose rules I was never told, where does my current model stop predicting reality, which variable am I missing, and what is the safest experiment that would show it?*
+Given a detector you can only query, where does it fail, which variable does it secretly depend on, and does that finding hold on conditions you never explored? This repo provides:
 
-The testbed is **defensive and cyber-physical**: a simulated IEEE 14-bus power grid protected by a classic bad-data detector. The agent learns where that detector goes blind, without ever being told the rule.
+- **A benchmark** of four tasks with known ground truth: a power-grid bad-data detector (two blind-spot definitions), a learned detector with a planted training gap, and a learned detector on real KDD Cup 99 records. Strategies are scored on how well the blind-spot rule they learn from a fixed experiment budget predicts true failures, including on **withheld conditions**.
+- **An audit pipeline** that returns a readable blind-spot rule, runs a paired-intervention shortcut test, and identifies a missing driver.
+- **A reference method** (boundary-targeting experiment design) plus baselines, so any new strategy can be compared fairly. On the real dataset, simple space-filling baselines currently win (see the scorecard).
+
+The testbed is **defensive and simulation-only**.
 
 <p align="center">
   <img src="assets/blind_spot_hunt.gif" width="560" alt="Animation: the agent runs experiments and its learned blind-spot rule converges on the true blind region">
 </p>
 <p align="center"><sub>One run, 60 experiments. Dashed line = true blind region (never shown to the agent). Shaded = the rule the agent has learned so far. Orange dots = experiments where the detector failed to respond.</sub></p>
 
-> **Status: research prototype.** Everything below is computed by the code in this repo, on simulators I built or configured, so the results show the method works *in these sandboxes*. They are not evidence it works on real infrastructure. See [Limitations and prior art](#limitations-and-prior-art) before quoting any number.
+> **Status: research prototype.** Everything below is computed by the code in this repo. Three of the four tasks are simulators I built or configured, so those results show what works *in those sandboxes*, not on real infrastructure. See [Limitations and prior art](#limitations-and-prior-art) before quoting any number.
 
 ### Scorecard (read this first)
 
-| Setting | Boundary-targeting vs baselines |
-|---|---|
-| Grid detector, two blind-spot types (simulated) | **Better**, including on withheld loads |
-| Missing-variable discovery (simulated, planted driver) | **Better** with targeted design (p = 0.031 with confirmation) |
-| Learned ML detector, synthetic gap (planted) | Best, but overlaps uncertainty sampling |
-| **Learned detector, real KDD Cup 99 data** | **Not better: uniform fuzzing wins** |
+Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my reference method; **maximin** is a space-filling baseline (always probe the point farthest from everything tried), which turned out to be much stronger than uniform fuzzing.
 
-The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far, an ablation ruled out the safe-expansion radius as the cause, and a coverage-first hybrid did not beat it either.
+| Task | Boundary | Uniform fuzzing | Maximin | Verdict for boundary-targeting |
+|---|---|---|---|---|
+| `grid_delta` (explored / withheld) | **0.993 ± 0.002** / **0.965 ± 0.014** | 0.885 / 0.829 | 0.964 ± 0.012 / 0.927 ± 0.041 | Better than both on explored; withheld overlaps maximin |
+| `grid_adaptive` | 0.976 ± 0.009 / **0.975 ± 0.007** | 0.875 / 0.797 | 0.949 ± 0.025 / 0.895 ± 0.055 | Better on withheld; explored overlaps maximin |
+| `ml_synthetic` (planted gap) | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 | **No advantage** (maximin is as good) |
+| **`kdd_real`** (real data) | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius); 0.845 ± 0.014 / 0.681 ± 0.026 (same 0.2 radius as boundary) | **Worse**: uniform and maximin both beat it |
+
+Missing-variable discovery (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation); no space-filling baseline has been run for that task yet.
+
+**Honest summary:** boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
+
+### Use the benchmark
+
+```bash
+python -m abd.benchmark --list
+python -m abd.benchmark --task kdd_real --strategies uniform maximin boundary --seeds 10
+python -m abd.benchmark --task grid_adaptive --strategies uniform boundary --seeds 20 --json out.json
+```
+
+Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`. Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`. Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
+
+Add your own strategy in a few lines:
+
+```python
+from abd.blindspot import register_strategy
+from abd.benchmark import run_task
+
+def my_strategy(X, y, candidates, rng, labels):
+    # X, y: experiments so far; candidates: allowed next experiments; labels(X, y) -> (impact, blind)
+    return int(rng.integers(len(candidates)))          # return an index into candidates
+
+register_strategy("mine", my_strategy)
+run_task("kdd_real", ["uniform", "mine"], seeds=10)
+```
 
 ---
 
@@ -213,6 +245,7 @@ python run_blind.py 20              # stage 2: blind-spot map + withheld-load tr
 python run_missing.py 20            # stage 3: missing-variable discovery
 python run_ml_detector.py 20        # stage 4: audit a learned (ML) detector + shortcut test
 python run_real_detector.py 20      # stage 5: real KDD Cup 99 data (downloads ~2 MB via scikit-learn)
+python -m abd.benchmark --list      # the packaged benchmark (see above)
 python scripts/make_media.py        # regenerate the GIFs and heatmap (needs PYTHONPATH=.)
 python scripts/make_results.py      # regenerate the charts from results/*.txt
 ```
@@ -228,6 +261,7 @@ abd/
   grid_env.py       IEEE-14 grid + DC state estimator + bad-data detector
   grid_ctx_env.py   same, plus a hidden temperature driver and context channels
   blindspot.py      blind-spot agent, load withholding, adaptive-threshold labels
+  benchmark.py      benchmark CLI: tasks, scoring, plug-in strategies
   ml_detector_env.py  learned (gradient-boosted) detector on synthetic traffic with a training gap
   real_detector_env.py  same audit on real KDD Cup 99 records (held-out attack families)
 run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py  run_real_detector.py
