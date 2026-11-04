@@ -1,0 +1,22 @@
+# Second missing-variable task: learned detector with a hidden traffic-mix driver (abd/ml_ctx_env.py)
+# commands: python run_missing.py 20 --env ml --drift {2.5,4.0}   and   ... --maximin   (20 seeds, cap 200, drifts planned in advance)
+# protocol notes: x-only model = random forest with out-of-bag residuals; targeted design uses a random-forest
+#   sensitivity estimate; confirmation uses each strategy's own design policy (the grid task keeps its legacy high-load confirmation)
+##### learned-detector missing-variable task, drift = 2.5 (20 seeds, cap 200)
+random            correct 4/20, wrong channel 1; experiments: median 200, mean 174 (cap 200)
+targeted          correct 5/20, wrong channel 1; experiments: median 200, mean 172 (cap 200)
+random+confirm    correct 1/20, wrong channel 0; experiments: median 200, mean 194 (cap 200)
+targeted+confirm  correct 1/20, wrong channel 0; experiments: median 200, mean 199 (cap 200)
+maximin           correct 4/20, wrong channel 1; experiments: median 200, mean 174 (cap 200)
+maximin+confirm   correct 0/20, wrong channel 0; experiments: median 200, mean 200 (cap 200)
+##### learned-detector missing-variable task, drift = 4.0 (20 seeds, cap 200)
+random            correct 16/20, wrong channel 3; experiments: median 100, mean 100 (cap 200)
+targeted          correct 19/20, wrong channel 0; experiments: median 105, mean 102 (cap 200)
+random+confirm    correct 6/20, wrong channel 0; experiments: median 200, mean 173 (cap 200)
+targeted+confirm  correct 11/20, wrong channel 0; experiments: median 190, mean 166 (cap 200)
+maximin           correct 13/20, wrong channel 1; experiments: median 145, mean 136 (cap 200)
+maximin+confirm   correct 4/20, wrong channel 0; experiments: median 200, mean 190 (cap 200)
+# Fisher exact, drift 4.0, no confirmation: targeted 19/20 vs random 16/20 p = 0.34; vs maximin 13/20 p = 0.044
+# Fisher exact, drift 4.0, with confirmation: targeted 11/20 vs random 6/20 p = 0.20; vs maximin 4/20 p = 0.048
+# Fisher exact, drift 4.0, wrong channel named: random 3/20 vs targeted 0/20 p = 0.23
+# drift 2.5: all strategies near floor (<= 5/20), no meaningful differences

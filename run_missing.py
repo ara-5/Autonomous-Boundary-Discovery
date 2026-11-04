@@ -16,7 +16,16 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-from abd.grid_ctx_env import CHANNELS, GridContextEnv
+if "--env" in sys.argv and sys.argv[sys.argv.index("--env") + 1] == "ml":
+    from abd.ml_ctx_env import CHANNELS, MLContextEnv as ContextEnv   # learned detector, hidden traffic mix
+else:
+    from abd.grid_ctx_env import CHANNELS, GridContextEnv as ContextEnv   # grid detector, hidden temperature
+TRUE_CHANNEL = CHANNELS[0]
+USE_RF = "--env" in sys.argv and sys.argv[sys.argv.index("--env") + 1] == "ml"   # S-shaped detector response: use a flexible x-only model
+if USE_RF and "--drift" in sys.argv:
+    import abd.ml_ctx_env as _mlc
+    _mlc.DRIFT = float(sys.argv[sys.argv.index("--drift") + 1])
+from sklearn.ensemble import RandomForestRegressor
 
 BATCH, PILOT, MAXN, CONFIRM_N = 10, 20, 200, 30
 
@@ -31,14 +40,56 @@ def interaction_model(X, C, y):
     return Ridge(alpha=1e-2).fit(np.hstack(F), y), F
 
 
+def x_only_model(X, y):
+    """The agent's current model: no context inputs. Returns (model, residuals on the training data)."""
+    if USE_RF:
+        rf = RandomForestRegressor(150, min_samples_leaf=3, oob_score=True, random_state=0).fit(X, y)
+        return rf, y - rf.oob_prediction_            # out-of-bag residuals, so no in-sample optimism
+    m = make_pipeline(PolynomialFeatures(2), StandardScaler(), Ridge(alpha=1e-2)).fit(X, y)
+    return m, y - m.predict(X)
+
+
 def test_channels(X, C, y):
-    res = y - make_pipeline(PolynomialFeatures(2), StandardScaler(), Ridge(alpha=1e-2)).fit(X, y).predict(X)
+    res = x_only_model(X, y)[1]
     p = [stats.pearsonr(C[:, j], res)[1] for j in range(C.shape[1])]
     return np.array(p)
 
 
+def sensitivity_rf(X, C, y, cand):
+    """Flexible-model sensitivity: how much does the prediction move when each context channel is swung
+    from 0.1 to 0.9, at each candidate experiment? (used for the learned-detector task)"""
+    rf = RandomForestRegressor(150, min_samples_leaf=3, random_state=0).fit(np.c_[X, C], y)
+    base = np.c_[cand, np.tile(C.mean(0), (len(cand), 1))]
+    eff = np.zeros(len(cand))
+    for j in range(C.shape[1]):
+        lo, hi = base.copy(), base.copy()
+        lo[:, 3 + j], hi[:, 3 + j] = 0.1, 0.9
+        eff += np.abs(rf.predict(hi) - rf.predict(lo))
+    return eff
+
+
+def choose(strategy, X, C, y, rng, n):
+    """Pick the next n experiment conditions under a design strategy."""
+    if strategy == "random":
+        return rng.uniform(0, 1, (n, 3))
+    cand = rng.uniform(0, 1, (800, 3))
+    if strategy == "maximin":                            # space-filling design: farthest from everything so far
+        chosen, pts = [], np.array(X)
+        for _ in range(n):
+            d = np.min(np.linalg.norm(cand[:, None] - pts[None], axis=2), axis=1)
+            k = int(np.argmax(d)); chosen.append(cand[k]); pts = np.vstack([pts, cand[k]])
+        return np.array(chosen)
+    if USE_RF:
+        eff = sensitivity_rf(np.array(X), np.array(C), np.array(y), cand)
+    else:
+        m, _ = interaction_model(np.array(X), np.array(C), np.array(y))
+        w = m.coef_[px(cand[:1]).shape[1]:].reshape(len(CHANNELS), 4)    # per-channel [1, x] weights
+        eff = np.abs(np.c_[np.ones(len(cand)), cand] @ w.T).sum(1)        # sensitivity to context
+    return cand[np.argsort(-eff)[:n]]
+
+
 def trial(strategy, seed, confirm=False):
-    env = GridContextEnv(noise_seed=seed) if not hasattr(trial, "env") else trial.env
+    env = ContextEnv(noise_seed=seed) if not hasattr(trial, "env") else trial.env
     trial.env = env
     env.rng = np.random.default_rng(seed)
     rng = np.random.default_rng(1000 + seed)
@@ -58,33 +109,21 @@ def trial(strategy, seed, confirm=False):
                 return len(y), CHANNELS[j], True
             # Confirmation: fresh targeted batch, test ONLY channel j on out-of-sample residuals.
             Xa, ya = np.array(X), np.array(y)
-            base = make_pipeline(PolynomialFeatures(2), StandardScaler(), Ridge(alpha=1e-2)).fit(Xa, ya)
+            base, _ = x_only_model(Xa, ya)
             Xf, Cf, yf = [], [], []
-            cand = rng.uniform(0, 1, (800, 3))
-            for x in cand[np.argsort(np.abs(cand[:, 0] - 1))[:CONFIRM_N]]:   # high-load, high-sensitivity region
+            if USE_RF:      # learned-detector task: confirm with the strategy's own design policy
+                batch = choose(strategy, X, C, y, rng, CONFIRM_N)
+            else:           # grid task (legacy protocol, kept so saved results stay valid): high-load region
+                cand = rng.uniform(0, 1, (800, 3))
+                batch = cand[np.argsort(np.abs(cand[:, 0] - 1))[:CONFIRM_N]]
+            for x in batch:
                 yf.append(env.run(x)); Xf.append(x); Cf.append(env.last_ctx)
             r, pv = stats.pearsonr(np.array(Cf)[:, j], np.array(yf) - base.predict(np.array(Xf)))
             X += Xf; C += Cf; y += yf
             if pv < 0.01:
                 return len(y), CHANNELS[j], True
             continue                                   # rejected: keep exploring
-        if strategy == "random":
-            nxt = rng.uniform(0, 1, (BATCH, 3))
-        elif strategy == "maximin":                      # space-filling design: farthest from everything so far
-            cand = rng.uniform(0, 1, (800, 3))
-            chosen, pts = [], np.array(X)
-            for _ in range(BATCH):
-                d = np.min(np.linalg.norm(cand[:, None] - pts[None], axis=2), axis=1)
-                k = int(np.argmax(d)); chosen.append(cand[k]); pts = np.vstack([pts, cand[k]])
-            nxt = np.array(chosen)
-        else:
-            cand = rng.uniform(0, 1, (800, 3))
-            m, _ = interaction_model(np.array(X), np.array(C), np.array(y))
-            nj = len(CHANNELS)
-            w = m.coef_[px(cand[:1]).shape[1]:].reshape(nj, 4)         # per-channel [1, x] weights
-            eff = np.abs(np.c_[np.ones(len(cand)), cand] @ w.T).sum(1)  # sensitivity to context
-            nxt = cand[np.argsort(-eff)[:BATCH]]
-        for x in nxt:
+        for x in choose(strategy, X, C, y, rng, BATCH):
             go(x)
     return MAXN, None, False
 
@@ -95,8 +134,8 @@ if __name__ == "__main__":
     for strat, conf in runs:
         R = [trial(strat, i, conf) for i in range(n)]
         cost = np.array([r[0] for r in R])
-        ok = np.array([r[2] and r[1] == "ambient_sensor" for r in R])
-        wrong = np.array([r[2] and r[1] != "ambient_sensor" for r in R])
+        ok = np.array([r[2] and r[1] == TRUE_CHANNEL for r in R])
+        wrong = np.array([r[2] and r[1] != TRUE_CHANNEL for r in R])
         tag = strat + ("+confirm" if conf else "")
         print(f"{tag:17s} correct {ok.sum()}/{n}, wrong channel {wrong.sum()}; "
               f"experiments: median {np.median(cost):.0f}, mean {cost.mean():.0f} (cap {MAXN})", flush=True)

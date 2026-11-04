@@ -28,9 +28,9 @@ Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my refe
 | `ml_synthetic` (planted gap) | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 | **No advantage** (maximin is as good) |
 | **`kdd_real`** (real data) | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius); 0.845 ± 0.014 / 0.681 ± 0.026 (same 0.2 radius as boundary) | **Worse**: uniform and maximin both beat it |
 
-**Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This is the most robust result in the repo, though the driver is one I planted.
+**Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This is the strongest result in the repo, though the driver is one I planted. A second test on a learned detector **partially replicates** it: targeted design again beats the space-filling baseline (p ≈ 0.04) but not plain random sampling (p = 0.34), and no method works at weak drift (section 2b).
 
-**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The one place targeted design wins clearly against every baseline is **missing-variable discovery**. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
+**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The most promising result is targeted design for **missing-variable discovery**: it beat both baselines on the grid task, and on a second, learned-detector task it beat the space-filling baseline but not plain random sampling. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
 
 ### Use the benchmark
 
@@ -140,6 +140,27 @@ Left: random experiment conditions. Right: conditions chosen where the fitted mo
 <details><summary>Raw output</summary>
 <p align="center"><img src="assets/terminal_missing_variable.png" width="900" alt="Terminal output of run_missing.py"></p>
 </details>
+
+### 2b. Second missing-variable test: a learned detector (partial replication)
+
+One planted driver on one simulator is thin evidence, so I repeated the missing-variable task on the learned detector from section 3: a hidden traffic-mix variable shifts the feature vector, the detector never saw it, and the agent can read one noisy proxy plus two distractors ([abd/ml_ctx_env.py](abd/ml_ctx_env.py)). I fixed two drift strengths **in advance** (2.5 = hard, 4.0 = easier) and report both. 20 seeds, cap of 200 experiments ([saved output](results/missing_variable_ml_results.txt)).
+
+| Real driver found (of 20) | drift 2.5 (hard) | drift 4.0 (easier) | wrong channel named, drift 4.0 |
+|---|---|---|---|
+| random | 4 | 16 | 3 |
+| **targeted** | 5 | **19** | **0** |
+| maximin (space-filling) | 4 | 13 | 1 |
+| random + confirm | 1 | 6 | 0 |
+| targeted + confirm | 1 | 11 | 0 |
+| maximin + confirm | 0 | 4 | 0 |
+
+What holds and what doesn't:
+- **At the easier drift, targeted design is best on every row**, and it beats the space-filling baseline (19 vs 13, p = 0.044; with confirmation 11 vs 4, p = 0.048). It is **not** significantly better than random (19 vs 16, p = 0.34; with confirmation 11 vs 6, p = 0.20).
+- **At the hard drift no method works** (4 to 5 of 20 without confirmation, about 1 with it), so there is nothing to compare.
+- So the grid result **partially replicates**: targeted design again beats the space-filling baseline, but its advantage over plain random sampling is not established here.
+- Confirmation again removes false identifications but costs a lot of power on this task (it spends 30 experiments per attempt against a cap of 200).
+
+Protocol notes, because they differ from the grid task: the x-only model is a random forest with out-of-bag residuals, targeted design uses a random-forest sensitivity estimate, and confirmation follows each strategy's own design policy. My first targeted design and confirmation step (quadratic model, high-load sampling) failed on this task because they assumed the grid's structure; I rebuilt them once, then ran the full pre-planned comparison. The grid task keeps its original protocol and its saved results are unchanged.
 
 ### 3. Contribution to AI security: auditing a *learned* detector
 
@@ -254,7 +275,8 @@ python -m pytest -q                 # 3 smoke tests (~30 s)
 python run_demo.py                  # stage 0: toy hidden-regime environment
 python run_grid.py                  # stage 1: grid detector, prediction error
 python run_blind.py 20              # stage 2: blind-spot map + withheld-load transfer (slow)
-python run_missing.py 20            # stage 3: missing-variable discovery
+python run_missing.py 20            # stage 3: missing-variable discovery (grid)
+python run_missing.py 20 --env ml --drift 4.0   # same task on a learned detector (partial replication)
 python run_ml_detector.py 20        # stage 4: audit a learned (ML) detector + shortcut test
 python run_real_detector.py 20      # stage 5: real KDD Cup 99 data (downloads ~2 MB via scikit-learn)
 python -m abd.benchmark --list      # the packaged benchmark (see above)
@@ -274,6 +296,7 @@ abd/
   grid_ctx_env.py   same, plus a hidden temperature driver and context channels
   blindspot.py      blind-spot agent, load withholding, adaptive-threshold labels
   benchmark.py      benchmark CLI: tasks, scoring, plug-in strategies
+  ml_ctx_env.py     learned detector plus a hidden traffic-mix driver (second missing-variable task)
   ml_detector_env.py  learned (gradient-boosted) detector on synthetic traffic with a training gap
   real_detector_env.py  same audit on real KDD Cup 99 records (held-out attack families)
 run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py  run_real_detector.py
