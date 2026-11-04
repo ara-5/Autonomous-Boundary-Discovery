@@ -38,10 +38,14 @@ class BlindAgent(Agent):
         z = [self.env.run([l, 0.0, self.rng.uniform()]) for l in L]
         self.null = _poly(2).fit(L[:, None], z)
 
+    def _impact(self, X):
+        # real-data mode: every probed record is a genuine attack, so every point is 'impactful'
+        return np.ones(len(X), bool) if self.mode == "real" else X[:, 1] > IMPACT
+
     def labels(self, X, y):
-        impact = X[:, 1] > IMPACT
+        impact = self._impact(X)
         ref = self.null.predict(X[:, :1])
-        if self.mode == "absolute":
+        if self.mode in ("absolute", "real"):
             blind = impact & (y < 0.5)                       # learned detector says 'benign' on a real attack
         elif self.mode == "adaptive":
             blind = impact & (y < adaptive_threshold(ref))   # detector would not raise an alarm
@@ -66,7 +70,7 @@ class BlindAgent(Agent):
                 rf = RandomForestClassifier(100, min_samples_leaf=2, random_state=self.seed)
                 rf.fit(Xa[impact], blind[impact])
                 unc = 1 - np.abs(2 * rf.predict_proba(C)[:, 1] - 1)
-                unc = np.where(C[:, 1] > IMPACT, unc, 0)       # only boundary inside impact zone
+                unc = np.where(self._impact(C), unc, 0)       # only boundary inside impact zone
                 score = unc if self.strategy == "uncertainty" else score / (score.max() + 1e-9) + unc
             elif self.strategy == "uncertainty":
                 score = self.rng.random(len(C))

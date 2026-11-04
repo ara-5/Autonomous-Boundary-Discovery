@@ -7,6 +7,7 @@ import os
 import re
 
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -49,7 +50,8 @@ def blind_chart(src="blind_spot_results.txt", out="results_blind_spot.png"):
              "discriminating": "model disagreement", "boundary": "boundary-targeting (ours)"}
     titles = {"delta": "Blind spot: indistinguishable from no perturbation",
               "adaptive": "Blind spot: below load-adaptive alarm threshold",
-              "ml_detector": "Learned detector says 'benign' on a real attack"}
+              "ml_detector": "Learned detector says 'benign' on a real attack",
+              "real_kdd": "Real KDD Cup 99 attacks missed by a learned detector"}
     fig, axes = plt.subplots(1, len(blocks), figsize=(11.5, 4.3), sharey=True, constrained_layout=True)
     axes = [axes] if len(blocks) == 1 else axes
     for ax, (kind, rows) in zip(axes, blocks.items()):
@@ -63,12 +65,13 @@ def blind_chart(src="blind_spot_results.txt", out="results_blind_spot.png"):
         for t, k in zip(ax.get_yticklabels(), order):
             if k == "boundary":
                 t.set_fontweight("bold"); t.set_color(INK)
-        ax.set_xlim(0.55, 1.02); ax.xaxis.grid(True, color=GRID, lw=1); ax.set_axisbelow(True)
+        lo = min(rows[k][key][0] - rows[k][key][1] for k in order for key in ('logit_seen', 'logit_wh'))
+        ax.set_xlim(max(0.3, np.floor((lo - 0.02) / 0.05) * 0.05), 1.02); ax.xaxis.grid(True, color=GRID, lw=1); ax.set_axisbelow(True)
         ax.set_xlabel("balanced accuracy of the learned blind-spot rule (mean ± 95% CI, 20 seeds)")
         ax.set_title(titles[kind], loc="left", fontsize=11.5, color=INK)
     h1 = plt.Line2D([], [], color=BLUE, marker="o", ls="", label="loads the agent explored")
     h2 = plt.Line2D([], [], color=ORANGE, marker="D", ls="", label="withheld high loads / contexts (transfer test)")
-    axes[0].legend(handles=[h1, h2], loc="lower left", fontsize=8.5, facecolor=SURF, edgecolor=GRID)
+    fig.legend(handles=[h1, h2], loc="outside lower center", ncol=2, fontsize=9, frameon=False)
     fig.savefig(os.path.join(OUT, out), dpi=150)
     plt.close(fig)
 
@@ -120,6 +123,9 @@ if __name__ == "__main__":
     if os.path.exists(os.path.join(RES, "ml_detector_results.txt")):
         blind_chart("ml_detector_results.txt", "results_ml_detector.png")
         terminal("terminal_ml_detector.png", "ml_detector_results.txt", "python run_ml_detector.py 20", 24)
+    if os.path.exists(os.path.join(RES, "real_detector_results.txt")):
+        blind_chart("real_detector_results.txt", "results_real_detector.png")
+        terminal("terminal_real_detector.png", "real_detector_results.txt", "python run_real_detector.py 20", 40)
     missing_chart()
     terminal("terminal_missing_variable.png", "missing_variable_results.txt", "python run_missing.py 20", 10)
     print("results assets done")

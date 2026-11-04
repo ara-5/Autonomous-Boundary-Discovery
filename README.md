@@ -13,6 +13,17 @@ The testbed is **defensive and cyber-physical**: a simulated IEEE 14-bus power g
 
 > **Status: research prototype.** Everything below is computed by the code in this repo, on simulators I built or configured, so the results show the method works *in these sandboxes*. They are not evidence it works on real infrastructure. See [Limitations and prior art](#limitations-and-prior-art) before quoting any number.
 
+### Scorecard (read this first)
+
+| Setting | Boundary-targeting vs baselines |
+|---|---|
+| Grid detector, two blind-spot types (simulated) | **Better**, including on withheld loads |
+| Missing-variable discovery (simulated, planted driver) | **Better** with targeted design (p = 0.031 with confirmation) |
+| Learned ML detector, synthetic gap (planted) | Best, but overlaps uncertainty sampling |
+| **Learned detector, real KDD Cup 99 data** | **Not better: uniform fuzzing wins** |
+
+The method works where I built the environment. It did not beat the simplest baseline on the one real dataset tested so far.
+
 ---
 
 ## The idea in one picture
@@ -122,6 +133,29 @@ The detector's blind spot follows its **training gap**, not the attack: a strong
 - The tree rules in the saved output call the context knob `load` because the engine reuses the grid sandbox's input layout.
 - Next steps for credibility: real public intrusion-detection datasets, several model families, and comparison with robustness-testing tools.
 
+### 4. Real data: a learned detector on KDD Cup 99 (a negative result)
+
+Nothing is planted here. A gradient-boosted detector is trained on the public [KDD Cup 99](https://archive.ics.uci.edu/dataset/130/kdd+cup+1999+data) (10%) records using normal traffic plus the common attack families; twelve rare remote-to-local and user-to-root families are held out of training. The agent probes the detector with **real attack records**: a query is a point in a 3-feature rank space (destination bytes, source bytes, connection count), snapped to the nearest real record. Ground truth for scoring is the detector's actual decision on that record.
+
+The detector has a natural gap: recall is 0.00 on `guess_passwd`, `ftp_write`, `loadmodule`, `multihop`, `phf`, `rootkit`, `perl` and `spy`, and it misses 18.2% of the 6,450-record probe pool. Destination-bytes ranks above 0.7 are withheld from exploration.
+
+<p align="center"><img src="assets/results_real_detector.png" width="760" alt="Dot plot of blind-spot rule accuracy by strategy on real KDD Cup 99 records"></p>
+
+**Result: on real data, boundary-targeting does not win.** With the logistic rule, plain **uniform fuzzing is best** (0.865 ± 0.013 explored, 0.709 ± 0.033 withheld). Boundary-targeting scores 0.783 ± 0.017 and 0.686 ± 0.026; the two intervals do not overlap on the explored contexts, and overlap on the withheld ones. Random exploration with the safe-expansion radius (0.865 / 0.655) is also at or above the three model-based strategies on explored contexts.
+
+What I think this means (hypotheses, not tested here):
+- **The safe-expansion radius probably costs accuracy.** Uniform fuzzing is the only strategy that ignores it. On an offline dataset the constraint protects nothing, so it only slows reaching distant clusters. A fair test needs a setting where unsafe queries really are costly.
+- **Real blind spots are fragmented.** They are clusters of rare families, not smooth regions, and a 3-feature rank projection is a coarse view of them.
+- **Withheld contexts are hard for every method**, and every strategy lands between about 0.60 and 0.71.
+
+On the agent's rule over the real records, uniform flags 89% of the truly missed records (and 18% of the detected ones); boundary-targeting flags 68% (and 16%). So on this dataset the model-based strategies are more conservative, not more accurate.
+
+<details><summary>Raw output</summary>
+<p align="center"><img src="assets/terminal_real_detector.png" width="900" alt="Terminal output of run_real_detector.py"></p>
+</details>
+
+**What this does and does not change.** It shows the audit pipeline runs end to end on real labelled data and recovers a large share of a real detector's blind spots. It also shows the advantage I measured in simulation does **not** carry over, so the simulator results should not be read as evidence that targeted exploration beats fuzzing in general. KDD Cup 99 is old and has known redundancy, so the next check is a newer dataset (CICIoT2023 is the candidate).
+
 ### How the agent works
 
 | Step | Implementation |
@@ -157,6 +191,7 @@ python run_grid.py                  # stage 1: grid detector, prediction error
 python run_blind.py 20              # stage 2: blind-spot map + withheld-load transfer (slow)
 python run_missing.py 20            # stage 3: missing-variable discovery
 python run_ml_detector.py 20        # stage 4: audit a learned (ML) detector + shortcut test
+python run_real_detector.py 20      # stage 5: real KDD Cup 99 data (downloads ~2 MB via scikit-learn)
 python scripts/make_media.py        # regenerate the GIFs and heatmap (needs PYTHONPATH=.)
 python scripts/make_results.py      # regenerate the charts from results/*.txt
 ```
@@ -173,7 +208,8 @@ abd/
   grid_ctx_env.py   same, plus a hidden temperature driver and context channels
   blindspot.py      blind-spot agent, load withholding, adaptive-threshold labels
   ml_detector_env.py  learned (gradient-boosted) detector on synthetic traffic with a training gap
-run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py
+  real_detector_env.py  same audit on real KDD Cup 99 records (held-out attack families)
+run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py  run_real_detector.py
 scripts/            make_media.py (GIFs, heatmap), make_results.py (charts)
 results/            saved outputs of the 20-seed runs
 tests/              smoke tests
@@ -202,7 +238,8 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 
 - Cheaper, sequential confirmation for the missing-variable step
 - Baselines from the closest prior art (safe level-set sampling, BO falsification)
-- Environments I did not design (larger grids, other domains, real public intrusion-detection datasets, several model families)
+- A newer real dataset (CICIoT2023) and several model families; test whether the safe-expansion radius is what hurts on offline data
+- Environments I did not design (larger grids, other domains)
 - Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement
 - A benchmark of procedurally generated hidden-rule environments
 
