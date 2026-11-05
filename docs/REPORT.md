@@ -40,6 +40,7 @@ The contribution I would stand behind is the **benchmark and the fair comparison
 | `grid_adaptive` | 0.976 ± 0.009 / **0.975 ± 0.007** | 0.875 / 0.797 | 0.949 ± 0.025 / 0.895 ± 0.055 |
 | `ml_synthetic` | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 |
 | `kdd_real` | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius) |
+| `unsw_real` | 0.564 ± 0.025 / 0.551 ± 0.045 | 0.673 ± 0.040 / 0.586 ± 0.037 | 0.710 ± 0.027 / 0.613 ± 0.040 |
 
 Boundary-targeting beats uniform and maximin on explored conditions of `grid_delta` and on withheld conditions of `grid_adaptive`; elsewhere intervals overlap or it loses.
 
@@ -53,6 +54,8 @@ Boundary-targeting beats uniform and maximin on explored conditions of `grid_del
 | `kdd_real` (radius 0.2) | **0.847 ± 0.009** / 0.672 ± 0.022 | 0.800 ± 0.024 / 0.629 ± 0.032 | 0.783 ± 0.017 / 0.686 ± 0.026 |
 
 Straddle ties or beats my reference method on three of four tasks and is clearly better on explored conditions of the real data. My method keeps one clear advantage, withheld conditions of `grid_adaptive` (0.975 vs 0.881 for straddle and 0.954 for BO falsification). BO falsification, which searches for failures rather than mapping the boundary, is the weakest. The decision-tree rule does not transfer to withheld conditions when the boundary moves with the withheld axis (0.825 on `grid_adaptive`), whereas the logistic rule with interaction features does.
+
+**Second real dataset (UNSW-NB15, 2015; [raw output](../results/unsw_real_results.txt)).** Same protocol as `kdd_real`, with the held-out categories (Analysis, Backdoor, Shellcode, Worms) and the three knobs (dbytes, sbytes, ct_srv_src) fixed before running. Result: **no strategy works well**. All nine score between 0.54 and 0.71 balanced accuracy (0.5 is chance); maximin is best on explored conditions (0.710), my boundary method is among the worst (0.564 / 0.551), and the published baselines (straddle 0.607 / 0.540, BO falsification 0.602 / 0.551) do no better. The blind region is about 7% of the pool and, on this detector, is not well described by three flow-size and count ranks. This is a failure of the three-feature projection as much as of any strategy, and it confirms that boundary-targeting does not carry over to real data. I did not tune anything after seeing it.
 
 ### 3.2 Why the real-data loss is not a simple artefact
 

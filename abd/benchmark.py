@@ -66,8 +66,16 @@ def _kdd():
                 lambda seed: RealDetectorEnv(noise_seed=seed), "real", T, e.truth(T) < 0.5)
 
 
+def _unsw():
+    from .unsw_detector_env import UNSWDetectorEnv
+    e = UNSWDetectorEnv()
+    T = np.random.default_rng(99).uniform(0, 1, (6000, 3))
+    return Task("unsw_real", "learned detector on real UNSW-NB15 flows (held-out attack categories)",
+                lambda seed: UNSWDetectorEnv(noise_seed=seed), "real", T, e.truth(T) < 0.5)
+
+
 TASKS = {"grid_delta": lambda: _grid("delta"), "grid_adaptive": lambda: _grid("adaptive"),
-         "ml_synthetic": _ml, "kdd_real": _kdd}
+         "ml_synthetic": _ml, "kdd_real": _kdd, "unsw_real": _unsw}
 
 
 def get_task(name):

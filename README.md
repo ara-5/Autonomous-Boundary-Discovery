@@ -27,6 +27,7 @@ Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my refe
 | `grid_adaptive` | 0.976 ± 0.009 / **0.975 ± 0.007** | 0.875 / 0.797 | 0.949 ± 0.025 / 0.895 ± 0.055 | Better on withheld; explored overlaps maximin |
 | `ml_synthetic` (planted gap) | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 | **No advantage** (maximin is as good) |
 | **`kdd_real`** (real data) | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius); 0.845 ± 0.014 / 0.681 ± 0.026 (same 0.2 radius as boundary) | **Worse**: uniform and maximin both beat it |
+| **`unsw_real`** (newer real data) | 0.564 ± 0.025 / 0.551 ± 0.045 | 0.673 / 0.586 | 0.710 ± 0.027 / 0.613 ± 0.040 | **Worse, and nothing works**: every strategy is only 0.55 to 0.71 (0.5 = chance); the three-feature view cannot describe this detector's blind spots |
 
 **Published-method baselines** (same protocol, logistic rule, explored / withheld; [raw output](results/benchmark_literature_baselines_results.txt)): `straddle` is active level-set estimation (Bryan et al. 2005; Gotovos et al. 2013) and `bo_falsify` is Bayesian-optimisation falsification, both on a Gaussian-process model of the distance to the blind-spot threshold.
 
@@ -51,7 +52,7 @@ python -m abd.benchmark --task kdd_real --strategies uniform maximin boundary --
 python -m abd.benchmark --task grid_adaptive --strategies uniform boundary --seeds 20 --json out.json
 ```
 
-Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`. Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`, `straddle` (level-set estimation), `bo_falsify` (BO falsification). Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
+Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`, `unsw_real` (needs the UNSW-NB15 CSVs in `data/unsw/`, see `abd/unsw_detector_env.py`). Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`, `straddle` (level-set estimation), `bo_falsify` (BO falsification). Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
 
 Add your own strategy in a few lines:
 

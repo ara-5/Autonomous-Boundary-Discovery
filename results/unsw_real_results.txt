@@ -1,0 +1,13 @@
+# UNSW-NB15 (real, 2015): learned detector, 4 attack categories held out (Analysis, Backdoor, Shellcode, Worms)
+# knobs dbytes/sbytes/ct_srv_src ranks, fixed before running. 20 seeds, 60 experiments, radius 0.2, balanced accuracy mean ± 95% CI.
+# Command: python -m abd.benchmark --task unsw_real --strategies uniform random uncertainty discriminating boundary hybrid maximin straddle bo_falsify --seeds 20 --radius 0.2
+##### blind-spot type: unsw_real  (true share: seen contexts 0.08, withheld 0.06)   [learned detector on real UNSW-NB15 flows (held-out attack categories)]
+uniform         TREE seen 0.605 ± 0.035 withheld 0.632 ± 0.049 | LOGIT seen 0.673 ± 0.040 withheld 0.586 ± 0.037
+random          TREE seen 0.567 ± 0.035 withheld 0.573 ± 0.043 | LOGIT seen 0.630 ± 0.043 withheld 0.581 ± 0.045
+uncertainty     TREE seen 0.527 ± 0.018 withheld 0.518 ± 0.025 | LOGIT seen 0.618 ± 0.046 withheld 0.538 ± 0.046
+discriminating  TREE seen 0.573 ± 0.026 withheld 0.570 ± 0.048 | LOGIT seen 0.596 ± 0.020 withheld 0.560 ± 0.033
+boundary        TREE seen 0.546 ± 0.012 withheld 0.530 ± 0.029 | LOGIT seen 0.564 ± 0.025 withheld 0.551 ± 0.045
+hybrid          TREE seen 0.572 ± 0.028 withheld 0.581 ± 0.045 | LOGIT seen 0.609 ± 0.032 withheld 0.592 ± 0.040
+maximin         TREE seen 0.630 ± 0.041 withheld 0.640 ± 0.051 | LOGIT seen 0.710 ± 0.027 withheld 0.613 ± 0.040
+straddle        TREE seen 0.573 ± 0.037 withheld 0.567 ± 0.062 | LOGIT seen 0.607 ± 0.043 withheld 0.540 ± 0.041
+bo_falsify      TREE seen 0.561 ± 0.029 withheld 0.553 ± 0.047 | LOGIT seen 0.602 ± 0.038 withheld 0.551 ± 0.039
