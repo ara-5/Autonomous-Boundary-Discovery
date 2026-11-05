@@ -40,9 +40,9 @@ Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my refe
 
 **Straddle is as good as my reference method on three of four tasks and clearly better on real explored conditions** (0.847 vs 0.783). My method keeps one clear edge: withheld conditions of `grid_adaptive` (0.975 vs 0.881 for straddle and 0.954 for BO falsification). BO falsification, which hunts for failures instead of mapping the boundary, is the weakest. So a published level-set method does at least as well as my boundary-targeting idea; the repo's value is the benchmark that makes this comparison possible.
 
-**Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This is the strongest result in the repo, though the driver is one I planted. A second test on a learned detector **partially replicates** it: targeted design again beats the space-filling baseline (p ≈ 0.04) but not plain random sampling (p = 0.34), and no method works at weak drift (section 2b).
+**Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This was the strongest result in the repo, though it did not replicate on real building data (section 2c), and the driver is one I planted. A second test on a learned detector **partially replicates** it: targeted design again beats the space-filling baseline (p ≈ 0.04) but not plain random sampling (p = 0.34), and no method works at weak drift (section 2b).
 
-**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The most promising result is targeted design for **missing-variable discovery**: it beat both baselines on the grid task, and on a second, learned-detector task it beat the space-filling baseline but not plain random sampling. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. A published level-set baseline (`straddle`, below) matches or beats my method on three of the four tasks, so my reference method has a clear edge in only one setting (withheld conditions of `grid_adaptive`). Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
+**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on both real datasets (KDD Cup 99, UNSW-NB15) it loses. Targeted design for **missing-variable discovery** looked best in simulation (it beat both baselines on the grid task, and the space-filling baseline on a learned-detector task) but **tied them on real building data** (section 2c), so that edge has not replicated outside my simulators. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. A published level-set baseline (`straddle`, below) matches or beats my method on three of the four tasks, so my reference method has a clear edge in only one setting (withheld conditions of `grid_adaptive`). Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
 
 ### Use the benchmark
 
@@ -173,6 +173,19 @@ What holds and what doesn't:
 - Confirmation again removes false identifications but costs a lot of power on this task (it spends 30 experiments per attempt against a cap of 200).
 
 Protocol notes, because they differ from the grid task: the x-only model is a random forest with out-of-bag residuals, targeted design uses a random-forest sensitivity estimate, and confirmation follows each strategy's own design policy. My first targeted design and confirmation step (quadratic model, high-load sampling) failed on this task because they assumed the grid's structure; I rebuilt them once, then ran the full pre-planned comparison. The grid task keeps its original protocol and its saved results are unchanged.
+
+
+### 2c. Third missing-variable test: real building data (not a simulator, not mine)
+
+LBNL Building 59 (Berkeley office, CC0). The model predicts HVAC power from outdoor temperature, solar radiation and hour of day; the agent must find whether occupant count is a missing driver, among two decoys (occupancy from 28 days away, and noise). Protocol fixed before running, 20 seeds, cap 200 experiments.
+
+| Real driver found (of 20) | without confirmation | with confirmation |
+|---|---|---|
+| random | 6 (2 wrong) | 0 |
+| targeted | 6 (7 wrong) | 5 (1 wrong) |
+| maximin | 7 (3 wrong) | 0 |
+
+**No strategy advantage in the headline comparison**: 6 vs 6 vs 7 (Fisher p = 1.0). The only difference is with confirmation, where targeted finds it 5/20 against 0/20 for the others (p = 0.047), a single nominal test that I would not lean on. Targeted design also names a wrong channel more often without confirmation. The effect is small (occupancy lifts a random-forest HVAC model from CV R² 0.59 to 0.63), queries replay history rather than intervene, and every method is mostly failing at this effect size. So the missing-variable edge seen on my two simulators **does not replicate** on real building data. Raw output: [`results/missing_variable_building_results.txt`](results/missing_variable_building_results.txt).
 
 ### 3. Contribution to AI security: auditing a *learned* detector
 
@@ -309,6 +322,8 @@ abd/
   blindspot.py      blind-spot agent, load withholding, adaptive-threshold labels
   benchmark.py      benchmark CLI: tasks, scoring, plug-in strategies
   ml_ctx_env.py     learned detector plus a hidden traffic-mix driver (second missing-variable task)
+  bldg_ctx_env.py   real building data (LBNL Bldg 59), hidden occupancy (third missing-variable task; data in data/bldg59/)
+  unsw_detector_env.py  real UNSW-NB15 flows (data in data/unsw/)
   ml_detector_env.py  learned (gradient-boosted) detector on synthetic traffic with a training gap
   real_detector_env.py  same audit on real KDD Cup 99 records (held-out attack families)
 run_demo.py  run_grid.py  run_blind.py  run_missing.py  run_ml_detector.py  run_real_detector.py

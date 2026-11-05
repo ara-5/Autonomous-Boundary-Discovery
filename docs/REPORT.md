@@ -10,7 +10,7 @@ I built four tasks with ground truth, a reference method (boundary-targeting exp
 
 1. **The reference method is not a general win.** Against uniform sampling it helps on the two simulated grid tasks, adds nothing on a synthetic learned detector, and loses on real KDD Cup 99 data. Against a stronger space-filling baseline (maximin) the margin shrinks or disappears everywhere, and a published level-set method (straddle) ties or beats it on three of four tasks; my method keeps a clear edge only on withheld conditions of one grid task.
 2. **Fair baselines matter.** Uniform fuzzing understates what a simple space-filling design achieves; the choice of baseline changed several conclusions.
-3. **Targeted design for missing-variable discovery is the most promising result.** It beat random and space-filling design on the grid task and beat the space-filling baseline (not random) on a second, learned-detector task.
+3. **Targeted design for missing-variable discovery looked promising in simulation but did not replicate on real data.** It beat random and space-filling design on the grid task and the space-filling baseline (not random) on a learned-detector task, then tied them on real building data.
 4. **The audit pipeline itself works.** It recovers 62% to 93% of a real detector's truly missed records (depending on strategy), returns readable rules, and a paired-intervention test exposes a variable the detector should not depend on.
 
 The contribution I would stand behind is the **benchmark and the fair comparison**, not a claim that targeted exploration beats fuzzing.
@@ -84,6 +84,8 @@ A hidden driver changes the detector's score; the agent reads one noisy proxy an
 
 Grid: targeted + confirm vs maximin + confirm, 18/20 vs 8/20, Fisher p = 0.002; vs random + confirm, p = 0.031. Learned detector at drift 4.0: targeted vs maximin, p = 0.044 (without confirmation) and 0.048 (with); vs random, p = 0.34 and 0.20 (not significant). At drift 2.5 every method is near the floor. The confirmation step removes false identifications but costs power. The two tasks use different protocols (see 5).
 
+**Real building data (LBNL Building 59, CC0; [raw output](../results/missing_variable_building_results.txt)).** The model knows outdoor temperature, solar radiation and hour; the hidden driver is occupant count, with two decoys (occupancy 28 days away, noise). Protocol fixed in advance, 20 seeds, cap 200. Found: random 6, targeted 6, maximin 7 (without confirmation); 0, 5, 0 (with confirmation). The headline comparison is a tie (Fisher p = 1.0); targeted names a wrong channel more often (7 vs 2 and 3); the only difference, with confirmation (5/20 vs 0/20, p = 0.047), is one nominal test. The effect is small (CV R² 0.59 to 0.63) and queries replay history. **The missing-variable advantage does not replicate on real data**, so the claim stays limited to my two simulators.
+
 ### 3.4 A shortcut test on a learned detector
 
 Holding a strong visible attack fixed and changing only a context variable that should be irrelevant lowers the detector's score on attacks by 0.73 (Wilcoxon p = 1.6e-11, n = 60), versus 0.12 on benign traffic (also significant, about six times smaller). The training data had attacks only at low context, and the planted gap is recovered as a measurable dependence.
@@ -117,7 +119,7 @@ Verbatim outputs for every table above are in [`results/`](../results). Prior ar
 
 1. A newer real dataset (for example CICIoT2023) and several model families.
 2. Authors' own implementations of the literature baselines, plus safe-exploration methods with formal guarantees.
-3. Missing-variable discovery on systems I did not design.
+3. A stronger-effect real missing-variable task (the building effect was small); the first such test did not replicate.
 4. Explicit hypothesis-based experiment selection (expected information gain) instead of committee disagreement.
 
 ## 8. Responsible use

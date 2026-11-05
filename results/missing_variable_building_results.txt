@@ -1,0 +1,9 @@
+# Missing-variable discovery on real data: LBNL Building 59 (CC0), hidden driver = occupant count; decoys = occupancy 28 days away, noise.
+# Model knows outdoor temp, solar, hour. 20 seeds, cap 200 experiments. Protocol fixed before running; no tuning afterwards.
+# Commands: python run_missing.py 20 --env bldg ; python run_missing.py 20 --env bldg --maximin
+random            correct 6/20, wrong channel 2; experiments: median 200, mean 181 (cap 200)
+targeted          correct 6/20, wrong channel 7; experiments: median 170, mean 154 (cap 200)
+random+confirm    correct 0/20, wrong channel 0; experiments: median 200, mean 200 (cap 200)
+targeted+confirm  correct 5/20, wrong channel 1; experiments: median 200, mean 198 (cap 200)
+maximin           correct 7/20, wrong channel 3; experiments: median 195, mean 158 (cap 200)
+maximin+confirm   correct 0/20, wrong channel 0; experiments: median 200, mean 200 (cap 200)

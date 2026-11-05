@@ -16,12 +16,15 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
-if "--env" in sys.argv and sys.argv[sys.argv.index("--env") + 1] == "ml":
+_ENV = sys.argv[sys.argv.index("--env") + 1] if "--env" in sys.argv else "grid"
+if _ENV == "bldg":
+    from abd.bldg_ctx_env import CHANNELS, BldgContextEnv as ContextEnv   # real building data (LBNL Bldg 59), hidden occupancy
+elif _ENV == "ml":
     from abd.ml_ctx_env import CHANNELS, MLContextEnv as ContextEnv   # learned detector, hidden traffic mix
 else:
     from abd.grid_ctx_env import CHANNELS, GridContextEnv as ContextEnv   # grid detector, hidden temperature
 TRUE_CHANNEL = CHANNELS[0]
-USE_RF = "--env" in sys.argv and sys.argv[sys.argv.index("--env") + 1] == "ml"   # S-shaped detector response: use a flexible x-only model
+USE_RF = _ENV in ("ml", "bldg")   # S-shaped detector response: use a flexible x-only model
 if USE_RF and "--drift" in sys.argv:
     import abd.ml_ctx_env as _mlc
     _mlc.DRIFT = float(sys.argv[sys.argv.index("--drift") + 1])
