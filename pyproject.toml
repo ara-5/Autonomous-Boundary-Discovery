@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abd-benchmark"
+version = "0.1.0"
+description = "Benchmark and audit toolkit for black-box detector blind-spot mapping and missing-variable discovery"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["numpy", "scipy", "scikit-learn", "pandas"]
+
+[project.optional-dependencies]
+grid = ["pandapower"]
+media = ["matplotlib", "imageio"]
+dev = ["pytest", "pandapower"]
+
+[project.scripts]
+abd-benchmark = "abd.benchmark:main"
+
+[tool.setuptools]
+packages = ["abd"]

@@ -1,5 +1,7 @@
 # Autonomous Boundary Discovery
 
+[![tests](https://github.com/ara-5/Autonomous-Boundary-Discovery/actions/workflows/tests.yml/badge.svg)](https://github.com/ara-5/Autonomous-Boundary-Discovery/actions/workflows/tests.yml)
+
 **A benchmark and audit toolkit for finding where a detector goes blind, using only black-box experiments.**
 
 Given a detector you can only query, where does it fail, which variable does it secretly depend on, and does that finding hold on conditions you never explored? This repo provides:
@@ -53,6 +55,14 @@ python -m abd.benchmark --task grid_adaptive --strategies uniform boundary --see
 ```
 
 Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`, `unsw_real` (needs the UNSW-NB15 CSVs in `data/unsw/`, see `abd/unsw_detector_env.py`). Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`, `straddle` (level-set estimation), `bo_falsify` (BO falsification). Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
+
+Install and try it (no data download needed for the grid tasks):
+
+```bash
+pip install -e ".[grid]"
+python examples/quickstart.py        # compares your strategy to baselines on grid_delta
+abd-benchmark --list                 # same CLI as python -m abd.benchmark
+```
 
 Add your own strategy in a few lines:
 
