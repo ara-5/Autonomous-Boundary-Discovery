@@ -21,7 +21,7 @@ from scipy import stats
 from .blindspot import (CUSTOM_STRATEGIES, DELTA, IMPACT, LOAD_CAP, BlindAgent,
                         adaptive_threshold)
 
-BUILTIN = ["uniform", "random", "uncertainty", "discriminating", "boundary", "hybrid"]
+BUILTIN = ["uniform", "random", "uncertainty", "discriminating", "boundary", "hybrid", "straddle", "bo_falsify"]
 _CACHE = {}
 
 

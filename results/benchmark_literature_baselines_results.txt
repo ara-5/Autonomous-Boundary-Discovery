@@ -1,0 +1,21 @@
+# Published-method baselines: straddle (active level-set estimation) and bo_falsify (BO falsification)
+# 20 seeds, 60 experiments, balanced accuracy mean ± 95% CI. Commands:
+#   python -m abd.benchmark --task {grid_delta,grid_adaptive,ml_synthetic} --strategies straddle bo_falsify --seeds 20 --radius 0.2
+#   python -m abd.benchmark --task kdd_real --strategies straddle bo_falsify --seeds 20 --radius 0.2     (first kdd_real block)
+#   python -m abd.benchmark --task kdd_real --strategies straddle bo_falsify --seeds 20 --radius none    (second kdd_real block)
+# (the grid_delta block was re-run on its own: the first batch produced a header but no result lines for it)
+##### blind-spot type: grid_delta  (true share: seen contexts 0.04, withheld 0.04)
+straddle        TREE seen 0.888 ± 0.031 withheld 0.846 ± 0.088 | LOGIT seen 0.990 ± 0.008 withheld 0.963 ± 0.017
+bo_falsify      TREE seen 0.940 ± 0.031 withheld 0.938 ± 0.056 | LOGIT seen 0.940 ± 0.025 withheld 0.927 ± 0.050
+##### blind-spot type: grid_adaptive  (true share: seen contexts 0.04, withheld 0.07)
+straddle        TREE seen 0.878 ± 0.035 withheld 0.739 ± 0.093 | LOGIT seen 0.982 ± 0.007 withheld 0.881 ± 0.061
+bo_falsify      TREE seen 0.944 ± 0.024 withheld 0.886 ± 0.049 | LOGIT seen 0.915 ± 0.025 withheld 0.954 ± 0.009
+##### blind-spot type: ml_synthetic  (true share: seen contexts 0.35, withheld 0.98)
+straddle        TREE seen 0.790 ± 0.024 withheld 0.678 ± 0.060 | LOGIT seen 0.869 ± 0.016 withheld 0.758 ± 0.062
+bo_falsify      TREE seen 0.695 ± 0.054 withheld 0.540 ± 0.058 | LOGIT seen 0.753 ± 0.040 withheld 0.643 ± 0.066
+##### blind-spot type: kdd_real, radius 0.2  (true share: seen contexts 0.15, withheld 0.38)
+straddle        TREE seen 0.893 ± 0.012 withheld 0.648 ± 0.035 | LOGIT seen 0.847 ± 0.009 withheld 0.672 ± 0.022
+bo_falsify      TREE seen 0.812 ± 0.037 withheld 0.627 ± 0.022 | LOGIT seen 0.800 ± 0.024 withheld 0.629 ± 0.032
+##### blind-spot type: kdd_real, no radius  (true share: seen contexts 0.15, withheld 0.38)
+straddle        TREE seen 0.899 ± 0.008 withheld 0.669 ± 0.027 | LOGIT seen 0.844 ± 0.008 withheld 0.705 ± 0.022
+bo_falsify      TREE seen 0.851 ± 0.034 withheld 0.650 ± 0.015 | LOGIT seen 0.818 ± 0.017 withheld 0.668 ± 0.031

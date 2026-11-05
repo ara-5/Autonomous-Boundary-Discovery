@@ -28,9 +28,20 @@ Logistic-rule balanced accuracy, 20 seeds, mean ± 95% CI. "Boundary" is my refe
 | `ml_synthetic` (planted gap) | 0.864 ± 0.011 / 0.788 ± 0.050 | 0.856 / 0.692 | 0.872 ± 0.010 / 0.807 ± 0.075 | **No advantage** (maximin is as good) |
 | **`kdd_real`** (real data) | 0.783 ± 0.017 / 0.686 ± 0.026 | 0.865 / 0.709 | 0.854 ± 0.009 / **0.774 ± 0.023** (no radius); 0.845 ± 0.014 / 0.681 ± 0.026 (same 0.2 radius as boundary) | **Worse**: uniform and maximin both beat it |
 
+**Published-method baselines** (same protocol, logistic rule, explored / withheld; [raw output](results/benchmark_literature_baselines_results.txt)): `straddle` is active level-set estimation (Bryan et al. 2005; Gotovos et al. 2013) and `bo_falsify` is Bayesian-optimisation falsification, both on a Gaussian-process model of the distance to the blind-spot threshold.
+
+| Task | Straddle | BO falsification | Boundary (mine) |
+|---|---|---|---|
+| `grid_delta` | 0.990 ± 0.008 / 0.963 ± 0.017 | 0.940 ± 0.025 / 0.927 ± 0.050 | 0.993 ± 0.002 / 0.965 ± 0.014 |
+| `grid_adaptive` | 0.982 ± 0.007 / 0.881 ± 0.061 | 0.915 ± 0.025 / 0.954 ± 0.009 | 0.976 ± 0.009 / **0.975 ± 0.007** |
+| `ml_synthetic` | 0.869 ± 0.016 / 0.758 ± 0.062 | 0.753 ± 0.040 / 0.643 ± 0.066 | 0.864 ± 0.011 / 0.788 ± 0.050 |
+| `kdd_real` (radius 0.2) | **0.847 ± 0.009** / 0.672 ± 0.022 | 0.800 ± 0.024 / 0.629 ± 0.032 | 0.783 ± 0.017 / 0.686 ± 0.026 |
+
+**Straddle is as good as my reference method on three of four tasks and clearly better on real explored conditions** (0.847 vs 0.783). My method keeps one clear edge: withheld conditions of `grid_adaptive` (0.975 vs 0.881 for straddle and 0.954 for BO falsification). BO falsification, which hunts for failures instead of mapping the boundary, is the weakest. So a published level-set method does at least as well as my boundary-targeting idea; the repo's value is the benchmark that makes this comparison possible.
+
 **Missing-variable discovery** (simulated, planted driver): targeted design beats random (18/20 vs 11/20, p = 0.031 with confirmation) **and the space-filling baseline** (18/20 vs 8/20 with confirmation, Fisher p = 0.002). This is the strongest result in the repo, though the driver is one I planted. A second test on a learned detector **partially replicates** it: targeted design again beats the space-filling baseline (p ≈ 0.04) but not plain random sampling (p = 0.34), and no method works at weak drift (section 2b).
 
-**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The most promising result is targeted design for **missing-variable discovery**: it beat both baselines on the grid task, and on a second, learned-detector task it beat the space-filling baseline but not plain random sampling. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
+**Honest summary:** for blind-spot mapping, boundary-targeting helps on the two grid tasks I built, and the margin shrinks once the baseline is a proper space-filling design instead of uniform sampling. On the synthetic learned detector it adds nothing, and on the one real dataset it loses. The most promising result is targeted design for **missing-variable discovery**: it beat both baselines on the grid task, and on a second, learned-detector task it beat the space-filling baseline but not plain random sampling. This is why the repo is now framed as a benchmark and audit toolkit: the fair comparison is the contribution, and a method that wins it on real data has not been found yet. A published level-set baseline (`straddle`, below) matches or beats my method on three of the four tasks, so my reference method has a clear edge in only one setting (withheld conditions of `grid_adaptive`). Raw output: [results/benchmark_maximin_results.txt](results/benchmark_maximin_results.txt).
 
 ### Use the benchmark
 
@@ -40,7 +51,7 @@ python -m abd.benchmark --task kdd_real --strategies uniform maximin boundary --
 python -m abd.benchmark --task grid_adaptive --strategies uniform boundary --seeds 20 --json out.json
 ```
 
-Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`. Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`. Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
+Tasks: `grid_delta`, `grid_adaptive`, `ml_synthetic`, `kdd_real`. Built-in strategies: `uniform`, `random`, `uncertainty`, `discriminating`, `boundary`, `hybrid`, `maximin`, `straddle` (level-set estimation), `bo_falsify` (BO falsification). Metric: balanced accuracy of the learned blind-spot rule on explored and on withheld conditions (mean ± 95% CI over seeds).
 
 Add your own strategy in a few lines:
 
@@ -327,7 +338,7 @@ Hidden-variable discovery with active experiments is already being pursued in ge
 ## Roadmap
 
 - Cheaper, sequential confirmation for the missing-variable step
-- Baselines from the closest prior art (safe level-set sampling, BO falsification)
+- Level-set estimation and BO falsification are now baselines (simple GP versions of my own); next: the authors' implementations and safe-exploration methods with formal guarantees
 - A newer real dataset (CICIoT2023) and several model families, to see whether uniform fuzzing's advantage on real data is specific to KDD Cup 99
 - Other feature projections of the real data (neither a hybrid nor a larger budget helped boundary-targeting)
 - Environments I did not design (larger grids, other domains)

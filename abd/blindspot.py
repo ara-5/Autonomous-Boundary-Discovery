@@ -37,6 +37,51 @@ def _maximin(X, y, C, rng, labels):
 
 register_strategy("maximin", _maximin)
 
+# Agent-aware strategies: name -> fn(agent, X, y, candidates) -> index. They may use agent.blind_margin(X, y),
+# the continuous distance to the blind-spot threshold (blind <=> impactful and blind_margin < 0).
+AGENT_STRATEGIES = {}
+
+
+def register_agent_strategy(name, fn):
+    AGENT_STRATEGIES[name] = fn
+
+
+def _gp_on_margin(agent, X, y):
+    """GP regression of the blind-spot margin on the impactful experiments so far (None if too few)."""
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+    keep = agent._impact(X)
+    if keep.sum() < 8:
+        return None
+    gp = GaussianProcessRegressor(RBF([0.3, 0.3, 0.3]) + WhiteKernel(0.05), normalize_y=True, n_restarts_optimizer=0)
+    return gp.fit(X[keep], agent.blind_margin(X, y)[keep])
+
+
+def _straddle(agent, X, y, C):
+    """Active level-set estimation (Bryan et al. 2005; Gotovos et al. 2013): probe where the
+    margin's confidence band straddles the threshold: argmax 1.96*sigma - |mu|."""
+    gp = _gp_on_margin(agent, X, y)
+    if gp is None:
+        return int(agent.rng.integers(len(C)))
+    mu, sd = gp.predict(C, return_std=True)
+    score = np.where(agent._impact(C), 1.96 * sd - np.abs(mu), -np.inf)
+    return int(np.argmax(score))
+
+
+def _bo_falsify(agent, X, y, C):
+    """Bayesian-optimisation falsification: search for the most failing input by minimising the
+    lower confidence bound of the margin (mu - 1.96*sigma)."""
+    gp = _gp_on_margin(agent, X, y)
+    if gp is None:
+        return int(agent.rng.integers(len(C)))
+    mu, sd = gp.predict(C, return_std=True)
+    score = np.where(agent._impact(C), -(mu - 1.96 * sd), -np.inf)
+    return int(np.argmax(score))
+
+
+register_agent_strategy("straddle", _straddle)
+register_agent_strategy("bo_falsify", _bo_falsify)
+
 
 def adaptive_threshold(null_score):
     return np.maximum(FLAG_MIN, FLAG_MULT * null_score)
@@ -60,6 +105,15 @@ class BlindAgent(Agent):
     def _impact(self, X):
         # real-data mode: every probed record is a genuine attack, so every point is 'impactful'
         return np.ones(len(X), bool) if self.mode == "real" else X[:, 1] > IMPACT
+
+    def blind_margin(self, X, y):
+        """Continuous distance to the blind-spot threshold: blind <=> impactful and margin < 0."""
+        ref = self.null.predict(X[:, :1])
+        if self.mode in ("absolute", "real"):
+            return y - 0.5
+        if self.mode == "adaptive":
+            return y - adaptive_threshold(ref)
+        return y - ref - DELTA
 
     def labels(self, X, y):
         impact = self._impact(X)
@@ -90,6 +144,8 @@ class BlindAgent(Agent):
         if strat != "uniform" and self.r is not None:   # r=None: no safe-expansion radius
             d = np.min(np.linalg.norm(C[:, None] - Xa[None], axis=2), axis=1)
             C = C[d <= self.r]
+        if strat in AGENT_STRATEGIES:
+            self._observe(C[AGENT_STRATEGIES[strat](self, Xa, ya, C)]); return
         if strat in CUSTOM_STRATEGIES:
             self._observe(C[CUSTOM_STRATEGIES[strat](Xa, ya, C, self.rng, self.labels)]); return
         if strat in ("uniform", "random"):
